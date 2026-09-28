@@ -1,0 +1,2847 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سامانه مدیریت قراردادهای پیمانکاری</title>
+<meta name="description" content="سامانه سازمانی ثبت، مدیریت و مشاهده قراردادهای پیمانکاری">
+<!--
+  ─────────────────────────────────────────────────────────────
+  سامانه مدیریت قراردادهای پیمانکاری — نسخه ۳.۰.۰
+  اجرا: این فایل را مستقیماً در مرورگر باز کنید (بدون سرور، بدون نصب، کاملاً آفلاین).
+  ذخیره‌سازی اطلاعات: IndexedDB مرورگر — پایگاه داده «ContractManagementDB»
+    Contracts (قراردادها)      | Contractors (پیمانکاران)
+    Deputies (معاونت‌ها)       | Settings (تنظیمات)
+    BackupHistory (سوابق پشتیبان)
+  هیچ اطلاعاتی در LocalStorage ذخیره نمی‌شود؛
+  هر تغییر کاربر بلافاصله (Auto Save) در IndexedDB ثبت می‌شود.
+  ─────────────────────────────────────────────────────────────
+-->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%231f4e9e'/%3E%3Cpath d='M8 7.5V7a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v.5' fill='none' stroke='%23fff' stroke-width='1.7'/%3E%3Crect x='5' y='7.5' width='14' height='11' rx='2' fill='none' stroke='%23fff' stroke-width='1.7'/%3E%3Cpath d='M5 11.5h14' stroke='%23fff' stroke-width='1.4'/%3E%3C/svg%3E">
+<!-- فونت: در صورت نصب «وزیرمتن» روی سیستم از آن استفاده می‌شود؛ در غیر این صورت فونت سیستمی جایگزین می‌شود (کاملاً آفلاین، بدون وابستگی خارجی) -->
+<style>
+/* ==========================================================
+   ۱) متغیرهای طراحی و استایل پایه
+   ========================================================== */
+:root{
+  --brand-50:#eef4fc; --brand-100:#dbe7f8; --brand-300:#9dbde8; --brand-500:#2a62bd;
+  --brand-600:#1f4e9e; --brand-700:#1a4083; --brand-800:#163567;
+  --bg:#f2f5fa; --surface:#ffffff;
+  --text-1:#1b2537; --text-2:#5a6a85; --text-3:#8a97ad; --border:#e3e9f2;
+  --success:#16a34a; --danger:#dc2626; --warning:#d97706; --info:#0284c7;
+  --radius:14px; --radius-sm:10px;
+  --shadow-sm:0 1px 2px rgba(16,24,40,.05), 0 1px 3px rgba(16,24,40,.08);
+  --shadow-md:0 10px 28px -8px rgba(16,24,40,.16);
+  --shadow-lg:0 18px 44px -12px rgba(16,24,40,.24);
+  --nav-h:64px; --sidebar-w:270px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit}
+svg{flex-shrink:0}
+body{font-family:Vazirmatn,Tahoma,'Segoe UI',sans-serif;background:var(--bg);color:var(--text-1);font-size:14px;line-height:1.9;-webkit-font-smoothing:antialiased}
+body.no-scroll{overflow:hidden}
+::selection{background:var(--brand-100)}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:#c7d2e2;border-radius:8px}
+::-webkit-scrollbar-thumb:hover{background:#a5b4cc}
+::-webkit-scrollbar-track{background:transparent}
+:focus-visible{outline:2px solid var(--brand-500);outline-offset:2px}
+.ltr{direction:ltr;unicode-bidi:isolate;display:inline-block}
+
+/* ==========================================================
+   ۲) Navbar
+   ========================================================== */
+.navbar{position:fixed;top:0;right:0;left:0;height:var(--nav-h);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 18px;z-index:50}
+.nav-side{display:flex;align-items:center;gap:12px;min-width:0}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}
+/* Placeholder لوگو — این بخش را می‌توانید با لوگوی سازمان جایگزین کنید */
+.brand-logo{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,var(--brand-500),var(--brand-800));color:#fff;display:grid;place-items:center;box-shadow:var(--shadow-sm)}
+.app-title{font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:420px}
+.nav-end{justify-content:flex-end}
+.nav-divider{width:1px;height:26px;background:var(--border);margin:0 4px}
+.icon-btn{position:relative;width:40px;height:40px;border-radius:var(--radius-sm);border:1px solid transparent;background:transparent;color:var(--text-2);display:grid;place-items:center;transition:background .15s,color .15s}
+.icon-btn:hover{background:#f1f5fb;color:var(--brand-700)}
+.icon-btn.bordered{border-color:var(--border);background:var(--surface)}
+.burger{display:none}
+.badge{position:absolute;top:3px;left:3px;min-width:18px;height:18px;border-radius:999px;background:var(--danger);color:#fff;font-size:11px;font-weight:700;display:none;place-items:center;padding:0 4px;border:2px solid var(--surface);line-height:1}
+.profile-btn{display:flex;align-items:center;gap:9px;background:none;border:none;padding:5px 7px;border-radius:var(--radius-sm);transition:background .15s}
+.profile-btn:hover{background:#f1f5fb}
+.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--brand-500),var(--brand-800));color:#fff;display:grid;place-items:center;font-weight:800;font-size:14px}
+.profile-name{font-size:13.5px;font-weight:700;white-space:nowrap}
+
+/* ==========================================================
+   ۳) Dropdown ها (اعلان‌ها و پروفایل)
+   ========================================================== */
+.notif-wrap,.profile-wrap{position:relative}
+.dropdown{position:absolute;top:calc(100% + 10px);inset-inline-end:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-lg);display:none;z-index:60;overflow:hidden}
+.dropdown.open{display:block;animation:pop .18s ease}
+.dd-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);font-size:13.5px}
+.link-btn{color:var(--brand-600);background:none;border:none;font-size:12px;font-weight:700;padding:2px 4px;border-radius:6px}
+.link-btn:hover{background:var(--brand-50)}
+.notif-menu{width:min(365px,calc(100vw - 24px))}
+.notif-list{max-height:330px;overflow-y:auto}
+.notif-item{display:flex;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);align-items:flex-start}
+.notif-item:last-child{border-bottom:none}
+.notif-item.read{opacity:.6}
+.n-dot{width:8px;height:8px;border-radius:50%;margin-top:9px;background:#cbd5e1}
+.n-contract{background:var(--brand-500)}
+.n-deputy{background:#0f9b8e}
+.n-delete{background:var(--danger)}
+.notif-item.read .n-dot{background:#cbd5e1}
+.n-body{display:flex;flex-direction:column;gap:1px;font-size:12.8px;line-height:1.8}
+.n-body time{font-size:11px;color:var(--text-3)}
+.notif-empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:34px 16px;color:var(--text-3);font-size:13px}
+.profile-menu{min-width:235px}
+.dropdown-user{padding:13px 16px;background:#f8fafd;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:1px}
+.dropdown-user b{font-size:13.5px}
+.dropdown-user span{font-size:11.5px;color:var(--text-3)}
+.menu-btn{display:flex;width:100%;align-items:center;gap:10px;padding:11px 16px;background:none;border:none;font-size:13.5px;color:var(--text-1);text-align:right;transition:background .13s}
+.menu-btn:hover{background:#f4f7fc}
+.menu-btn.danger{color:var(--danger)}
+.menu-btn.danger:hover{background:#fef2f2}
+
+/* ==========================================================
+   ۴) Sidebar (راست‌چین) + Drawer موبایل
+   ========================================================== */
+.drawer-overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:39;opacity:0;pointer-events:none;transition:opacity .25s}
+.drawer-overlay.show{opacity:1;pointer-events:auto}
+.sidebar{position:fixed;top:var(--nav-h);right:0;bottom:0;width:var(--sidebar-w);background:linear-gradient(180deg,#17375f 0%,#122a4b 100%);color:#c3d2e8;display:flex;flex-direction:column;z-index:40;transition:transform .3s ease}
+.side-head{padding:20px 22px 12px}
+.side-title{font-size:11.5px;letter-spacing:.08em;color:#8fa5c6;font-weight:600}
+.side-nav{padding:6px 12px;display:flex;flex-direction:column;gap:4px;overflow-y:auto}
+.side-link{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:var(--radius-sm);font-size:14px;font-weight:500;position:relative;transition:background .15s,color .15s}
+.side-link svg{opacity:.85}
+.side-link:hover{background:rgba(255,255,255,.07);color:#fff}
+.side-link.active{background:rgba(255,255,255,.13);color:#fff;font-weight:700}
+.side-link.active::before{content:'';position:absolute;right:-12px;top:24%;bottom:24%;width:4px;border-radius:4px 0 0 4px;background:#6aa5ff}
+.side-foot{margin-top:auto;padding:15px 22px;font-size:11.5px;color:#7e93b5;border-top:1px solid rgba(255,255,255,.09)}
+
+/* ==========================================================
+   ۵) چیدمان اصلی و صفحات
+   ========================================================== */
+.main{margin-top:var(--nav-h);margin-right:var(--sidebar-w);padding:26px 28px 42px;min-height:calc(100vh - var(--nav-h))}
+.page{display:none}
+.page.active{display:block;animation:fadeUp .28s ease}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+.page-head h1{font-size:22px;font-weight:800}
+.page-head p{font-size:13.5px;color:var(--text-2);margin-top:4px}
+.main-foot{margin-top:36px;text-align:center;font-size:12px;color:var(--text-3)}
+
+/* ==========================================================
+   ۶) کارت‌ها و آمار داشبورد
+   ========================================================== */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm)}
+.card-head{padding:15px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.card-head h3{font-size:14.5px;font-weight:700}
+.link{color:var(--brand-600);font-size:12.5px;font-weight:700;white-space:nowrap}
+.link:hover{text-decoration:underline}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;display:flex;gap:15px;align-items:center;box-shadow:var(--shadow-sm);transition:transform .18s,box-shadow .18s}
+.stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.stat-card.sm{padding:16px}
+.stat-icon{width:52px;height:52px;border-radius:13px;display:grid;place-items:center;flex-shrink:0}
+.stat-card.sm .stat-icon{width:44px;height:44px;border-radius:11px}
+.i-blue{background:#e8f0fe;color:#1f4e9e}
+.i-teal{background:#e0f5f3;color:#0e8a80}
+.i-purple{background:#f1ecfb;color:#6d4fc4}
+.i-amber{background:#fdf3e3;color:#c07a11}
+.i-red{background:#fdeaea;color:#c53030}
+.stat-txt{display:flex;flex-direction:column;min-width:0}
+.stat-value{font-size:25px;font-weight:800;line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-value.sm{font-size:15.5px;line-height:1.8}
+.stat-label{font-size:12.5px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-sub{font-size:11.5px;color:var(--text-3);margin-top:2px}
+.dash-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;margin-bottom:16px}
+
+/* نمودار میله‌ای ساده (CSS) */
+.chart{height:260px;padding:18px 20px 14px;display:flex;align-items:stretch;gap:12px;overflow-x:auto}
+.bar-col{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;flex:1 0 64px;min-width:64px;height:100%}
+.bar-value{font-size:12.5px;font-weight:800;color:var(--text-1)}
+.bar{width:min(44px,70%);min-height:4px;border-radius:8px 8px 4px 4px;transform-origin:bottom;animation:grow .55s ease}
+.bar-label{font-size:11.5px;color:var(--text-2);text-align:center;line-height:1.5;max-width:96px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+/* تفکیک معاونت‌ها (داشبورد) */
+.dep-breakdown{padding:4px 0 8px}
+.dep-row-item{display:grid;grid-template-columns:230px 1fr 44px;gap:14px;align-items:center;padding:11px 20px;border-bottom:1px dashed var(--border)}
+.dep-row-item:last-child{border-bottom:none}
+.dep-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dep-bar{height:10px;background:var(--brand-50);border-radius:999px;overflow:hidden}
+.dep-bar span{display:block;height:100%;border-radius:999px}
+.dep-count{font-weight:800;color:var(--brand-700);text-align:left;font-size:14px}
+
+/* آخرین قراردادها */
+.recent-list{display:flex;flex-direction:column}
+.recent-item{display:flex;justify-content:space-between;gap:12px;padding:12px 20px;border-bottom:1px solid var(--border);transition:background .13s}
+.recent-item:last-child{border-bottom:none}
+.recent-item:hover{background:#f7f9fd}
+.recent-txt{min-width:0;display:flex;flex-direction:column;gap:1px}
+.recent-txt b{font-size:13.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:380px;line-height:1.9}
+.recent-txt span{font-size:12px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recent-side{display:flex;flex-direction:column;gap:4px;align-items:flex-start;flex-shrink:0}
+.recent-side .chip{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.recent-num{font-size:11.5px;color:var(--text-2);font-weight:700}
+.recent-date{font-size:11.5px;color:var(--text-3)}
+.chip{display:inline-block;background:var(--brand-50);color:var(--brand-700);border-radius:999px;padding:3px 11px;font-size:11.8px;font-weight:700;line-height:1.8}
+
+/* حالت خالی */
+.empty-box{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text-3);padding:32px 16px;font-size:13px;text-align:center}
+.empty-mini{display:flex;flex-direction:column;align-items:center;gap:10px;padding:30px 16px;color:var(--text-3);font-size:13px;text-align:center}
+
+/* ==========================================================
+   ۷) فرم‌ها و ورودی‌ها
+   ========================================================== */
+.form-card{padding:26px}
+.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px 20px}
+.span-2{grid-column:span 2}
+.field label{display:flex;align-items:center;gap:5px;font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text-1)}
+.req{color:var(--danger);font-size:14px;line-height:1}
+.input{width:100%;height:42px;padding:0 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13.5px;color:var(--text-1);background:var(--surface);transition:border-color .15s,box-shadow .15s}
+.input::placeholder{color:var(--text-3)}
+.input:focus{outline:none;border-color:var(--brand-500);box-shadow:0 0 0 3.5px rgba(42,98,189,.13)}
+select.input{cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238a97ad' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:left 12px center;padding-left:32px}
+textarea.input{height:auto;min-height:96px;max-height:230px;resize:vertical;line-height:1.8;padding:9px 12px}
+input[type=number]{appearance:textfield;-moz-appearance:textfield}
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.field-error{font-size:12px;color:var(--danger);font-weight:600;margin-top:5px;line-height:1.7}
+.field-error:empty{margin:0;display:none}
+.field.has-error .input{border-color:var(--danger)}
+.field.has-error .input:focus{box-shadow:0 0 0 3.5px rgba(220,38,38,.12)}
+.field-hint-row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:6px;min-height:24px}
+.char-counter{font-size:11.8px;color:var(--text-3);white-space:nowrap}
+.char-counter.warn{color:var(--warning);font-weight:700}
+.char-counter.danger{color:var(--danger);font-weight:800}
+.dep-row{display:flex;gap:10px;align-items:stretch}
+.dep-row select{flex:1;min-width:0}
+.dep-row .unit-select{flex:0 0 100px;max-width:100px}
+.dur-row{display:flex;gap:10px}
+.dur-row input{max-width:180px}
+.dur-row select{max-width:150px}
+.form-actions{display:flex;gap:12px;margin-top:26px;padding-top:20px;border-top:1px solid var(--border);flex-wrap:wrap}
+
+/* دکمه‌ها */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 20px;border-radius:var(--radius-sm);font-size:13.5px;font-weight:700;border:1.5px solid transparent;transition:background .15s,color .15s,border-color .15s,box-shadow .15s;white-space:nowrap}
+.btn-primary{background:var(--brand-600);color:#fff;box-shadow:var(--shadow-sm)}
+.btn-primary:hover{background:var(--brand-700)}
+.btn-ghost{background:var(--surface);border-color:var(--border);color:var(--text-1)}
+.btn-ghost:hover{background:#f4f7fc;border-color:#d3dce9}
+.btn-outline{background:var(--brand-50);color:var(--brand-700);border-color:var(--brand-100)}
+.btn-outline:hover{background:var(--brand-100)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-danger:hover{background:#b91c1c}
+.btn-danger-ghost{background:#fef2f2;color:var(--danger);border-color:#fecaca}
+.btn-danger-ghost:hover{background:#fee2e2}
+.btn-sm{padding:7px 13px;font-size:12.5px;border-radius:8px}
+.btn-nowrap{white-space:nowrap}
+.btn:disabled{opacity:.55;cursor:default}
+
+/* ==========================================================
+   ۸) تقویم شمسی (Date Picker)
+   ========================================================== */
+.dp-wrap{position:relative;display:block}
+.dp-input{cursor:pointer;padding-left:36px}
+.dp-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-3);pointer-events:none}
+.jdp{position:fixed;z-index:120;width:306px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-lg);padding:14px;display:none}
+.jdp.open{display:block;animation:pop .18s ease}
+.jdp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px}
+.jdp-title{font-weight:800;font-size:14px;min-width:120px;text-align:center}
+.jdp-nav{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text-2);display:grid;place-items:center;transition:background .13s}
+.jdp-nav:hover{background:var(--brand-50);color:var(--brand-700)}
+.jdp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.jdp-wd{font-size:11px;color:var(--text-3);text-align:center;padding:4px 0;font-weight:700}
+.jdp-empty{height:34px;visibility:hidden}
+.jdp-day{height:34px;border:none;background:none;border-radius:8px;font-size:12.8px;color:var(--text-1);transition:background .12s}
+.jdp-day:hover{background:var(--brand-50)}
+.jdp-day.today{box-shadow:inset 0 0 0 1.5px var(--brand-500);color:var(--brand-700);font-weight:700}
+.jdp-day.sel{background:var(--brand-600);color:#fff;font-weight:800;box-shadow:none}
+.jdp-foot{display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.jdp-today,.jdp-clear{background:none;border:none;color:var(--brand-700);font-size:12.5px;font-weight:700;padding:4px 8px;border-radius:6px}
+.jdp-today:hover,.jdp-clear:hover{background:var(--brand-50)}
+
+/* ==========================================================
+   ۹) لیست قراردادها: فیلترها + جدول + Pagination
+   ========================================================== */
+.filters-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+.search-box{position:relative;flex:1 1 270px;min-width:230px}
+.search-box svg{position:absolute;inset-inline-start:12px;top:50%;transform:translateY(-50%);color:var(--text-3);pointer-events:none}
+.search-box input{padding-inline-start:40px}
+.f-select{flex:1 1 175px;min-width:160px;width:auto}
+.f-date{flex:0 1 172px;min-width:150px}
+.table-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);overflow:hidden}
+.scroll-hint{display:none;font-size:12px;color:var(--text-3);padding:10px 16px 0}
+.table-wrap{overflow-x:auto}
+.table-wrap table{width:100%;border-collapse:collapse;min-width:920px}
+.table-wrap thead th{background:#f8fafd;font-size:12.3px;color:var(--text-2);font-weight:700;padding:12px 14px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+th[data-sort]{cursor:pointer;user-select:none}
+th[data-sort]:hover{color:var(--brand-700)}
+th.sort-asc::after,th.sort-desc::after{content:'▲';font-size:9px;margin-inline-start:5px;color:var(--brand-600)}
+th.sort-desc::after{content:'▼'}
+.table-wrap tbody td{padding:13px 14px;font-size:13.2px;border-bottom:1px solid var(--border);vertical-align:middle}
+.table-wrap tbody tr{transition:background .12s}
+.table-wrap tbody tr:hover{background:#f7f9fd}
+.table-wrap tbody tr:last-child td{border-bottom:none}
+.c-num{font-weight:800;color:var(--brand-700);letter-spacing:.2px}
+.c-date,.c-dur{white-space:nowrap}
+.cell-title{max-width:340px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.8}
+.row-actions{display:flex;gap:7px}
+.icon-btn.sm{width:30px;height:30px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text-2)}
+.icon-btn.sm:hover{color:var(--brand-700);border-color:var(--brand-300);background:var(--brand-50)}
+.icon-btn.sm.danger:hover{color:var(--danger);border-color:#fca5a5;background:#fef2f2}
+.table-foot{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 18px;border-top:1px solid var(--border);flex-wrap:wrap}
+.result-count{font-size:12.5px;color:var(--text-2)}
+.pager{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pager-side{display:flex;align-items:center;gap:8px;margin-inline-end:10px}
+.size-label{font-size:12px;color:var(--text-2);white-space:nowrap}
+.size-select{width:auto;height:34px;padding:0 26px 0 8px;font-size:12.5px;border-radius:8px;background-position:left 8px center}
+.page-btn{min-width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:13px;color:var(--text-1);padding:0 10px;transition:background .13s}
+.page-btn:hover:not(:disabled):not(.active){background:#f1f5fb}
+.page-btn.active{background:var(--brand-600);color:#fff;border-color:var(--brand-600)}
+.page-btn:disabled{opacity:.45;cursor:default}
+.page-dots{color:var(--text-3);padding:0 2px}
+
+/* ==========================================================
+   ۱۰) گزارشات
+   ========================================================== */
+.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px}
+.report-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.hbars{padding:6px 0 10px}
+.hbar-row{padding:12px 20px;border-bottom:1px dashed var(--border)}
+.hbar-row:last-child{border-bottom:none}
+.hbar-top{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:13px;margin-bottom:7px}
+.hbar-name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hbar-val{color:var(--text-2);font-size:12px;white-space:nowrap;flex-shrink:0}
+.hbar{height:10px;background:#eef2f8;border-radius:999px;overflow:hidden}
+.hbar span{display:block;height:100%;border-radius:999px}
+
+/* ==========================================================
+   ۱۱) مودال‌ها و Toast
+   ========================================================== */
+.modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(2px);display:none;place-items:center;z-index:100;padding:16px;animation:fadeIn .2s ease}
+.modal-overlay.open{display:grid}
+.modal{background:var(--surface);border-radius:16px;width:min(480px,100%);max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);animation:pop .22s ease}
+.modal-sm{width:min(430px,100%)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 22px;border-bottom:1px solid var(--border)}
+.modal-head h3{font-size:15.5px;font-weight:800}
+.modal-body{padding:22px}
+.modal-foot{padding:15px 22px;border-top:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap}
+.modal-hint{font-size:12.3px;color:var(--text-3);margin-top:4px}
+.view-row{display:flex;gap:14px;padding:10px 0;border-bottom:1px dashed var(--border);font-size:13.5px;align-items:baseline}
+.view-row:last-child{border-bottom:none}
+.view-label{width:150px;flex-shrink:0;color:var(--text-2);font-size:12.5px}
+.view-title{white-space:pre-wrap;font-weight:600;line-height:2}
+.danger-text{font-size:12.5px;color:var(--text-2);margin-top:6px}
+.toasts{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:300;display:flex;flex-direction:column;gap:10px;align-items:center;width:max-content;max-width:calc(100vw - 32px)}
+.toast{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-inline-start:4px solid var(--brand-500);border-radius:12px;box-shadow:var(--shadow-lg);padding:11px 18px;font-size:13.2px;font-weight:600;animation:toastIn .28s ease;max-width:100%}
+.toast span{line-height:1.8}
+.t-success{border-inline-start-color:var(--success)}.t-success svg{color:var(--success)}
+.t-error{border-inline-start-color:var(--danger)}.t-error svg{color:var(--danger)}
+.t-info{border-inline-start-color:var(--info)}.t-info svg{color:var(--info)}
+.toast.out{opacity:0;transform:translateY(10px);transition:opacity .3s,transform .3s}
+
+/* ==========================================================
+   ۱۲) انیمیشن‌ها
+   ========================================================== */
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes pop{from{opacity:0;transform:translateY(-6px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes grow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes toastIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* ==========================================================
+   ۱۳) واکنش‌گرایی (Responsive)
+   ========================================================== */
+@media (max-width:992px){
+  .burger{display:grid}
+  .sidebar{transform:translateX(100%);z-index:70}
+  .sidebar.open{transform:none;box-shadow:0 0 40px rgba(2,12,27,.35)}
+  .main{margin-right:0;padding:20px 16px 34px}
+  .scroll-hint{display:block}
+}
+@media (max-width:860px){
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .dash-grid{grid-template-columns:1fr}
+  .summary-grid{grid-template-columns:repeat(2,1fr)}
+  .report-grid{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  .app-title{display:none}
+  .profile-name{display:none}
+  .nav-divider{display:none}
+  .navbar{padding:0 12px}
+  .form-grid{grid-template-columns:1fr}
+  .span-2{grid-column:auto}
+  .form-card{padding:20px 16px}
+  .page-head h1{font-size:19px}
+  .summary-grid{grid-template-columns:1fr}
+  .stats-grid{gap:12px}
+  .stat-card{padding:15px;gap:12px}
+  .stat-icon{width:44px;height:44px}
+  .stat-value{font-size:21px}
+  .dep-row-item{grid-template-columns:1fr 44px}
+  .dep-name{grid-column:1/-1}
+  .table-foot{justify-content:center}
+  .card-head{padding:13px 16px}
+  .recent-item{padding:12px 16px}
+  .dep-row-item{padding:11px 16px}
+  .hbar-row{padding:11px 16px}
+  .dur-row{flex-wrap:wrap}
+  .dur-row input{max-width:none;flex:1}
+  .dur-row select{max-width:130px}
+}
+@media (max-width:420px){
+  .stats-grid{grid-template-columns:1fr}
+}
+
+/* ==========================================================
+   ۱۶) صفحات جدید: مدیریت پیمانکاران، پشتیبان‌گیری، تنظیمات
+   ========================================================== */
+.side-group{padding:16px 22px 8px;font-size:11.5px;letter-spacing:.08em;color:#8fa5c6;font-weight:600}
+.field-hint{font-size:11.3px;color:var(--text-3);margin-top:3px;line-height:1.8}
+.ct-grid{display:grid;grid-template-columns:370px minmax(0,1fr);gap:18px;align-items:start}
+.ct-grid .form-card{padding:20px}
+.chip.teal{background:#e0f5f3;color:#0e8a80}
+.bk-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;margin-bottom:18px}
+.card-pad{padding:20px}
+.bk-desc{font-size:13px;color:var(--text-2);line-height:1.9;margin-bottom:14px}
+.backup-scope{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.scope-chip{display:inline-flex;align-items:center;gap:5px;background:var(--brand-50);color:var(--brand-700);border:1px solid var(--border);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600}
+.dropzone{border:2px dashed var(--brand-300);border-radius:var(--radius);background:var(--brand-50);padding:30px 18px;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;color:var(--brand-700);cursor:pointer;transition:border-color .15s,background .15s,transform .15s}
+.dropzone svg{color:var(--brand-500);margin-bottom:4px}
+.dropzone b{font-size:13.5px}
+.dropzone span{font-size:12px;color:var(--text-2)}
+.dropzone:hover,.dropzone.drag{border-color:var(--brand-500);background:var(--brand-100)}
+.dropzone.drag{transform:scale(1.01)}
+#restorePreview{margin-top:14px}
+.rp-head{display:flex;align-items:center;gap:8px;color:var(--success);font-weight:700;font-size:13.2px;margin-bottom:12px}
+.rp-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.rp-stats div{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-align:center}
+.rp-stats b{display:block;font-size:17px;font-weight:800}
+.rp-stats span{font-size:11.5px;color:var(--text-2)}
+.rp-warn{display:flex;gap:9px;align-items:flex-start;background:rgba(217,119,6,.09);border:1px solid rgba(217,119,6,.3);color:var(--warning);border-radius:var(--radius-sm);padding:10px 12px;font-size:12.3px;line-height:1.8;margin-bottom:12px}
+.rp-actions{display:flex;gap:10px;flex-wrap:wrap}
+.rp-error{display:flex;gap:9px;align-items:flex-start;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.3);color:var(--danger);border-radius:var(--radius-sm);padding:11px 12px;font-size:12.8px;line-height:1.8}
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:18px;align-items:start}
+.logo-row{display:flex;gap:14px;align-items:center}
+.logo-preview{width:64px;height:64px;border-radius:var(--radius-sm);border:1.5px dashed var(--border);background:var(--bg);display:grid;place-items:center;color:var(--text-3);overflow:hidden;flex-shrink:0}
+.logo-preview img{width:100%;height:100%;object-fit:contain}
+.logo-actions{display:flex;flex-direction:column;gap:7px;align-items:flex-start}
+.logo-hint{font-size:11.3px;color:var(--text-3)}
+.theme-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.theme-card{position:relative;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--surface);padding:18px 10px 14px;display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--text-1);font-weight:700;font-size:13px;transition:border-color .15s,background .15s;font-family:inherit}
+.theme-card svg{color:var(--brand-500)}
+.theme-card:hover{border-color:var(--brand-300)}
+.theme-card.active{border-color:var(--brand-500);background:var(--brand-50)}
+.theme-card.active::after{content:'✓';position:absolute;top:8px;left:8px;width:20px;height:20px;border-radius:50%;background:var(--brand-500);color:#fff;font-size:12px;display:grid;place-items:center}
+.setting-row{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:13px 0;border-bottom:1px dashed var(--border)}
+.setting-row:last-child{border-bottom:none}
+.setting-row b{display:block;font-size:13.2px}
+.setting-sub{display:block;font-size:11.5px;color:var(--text-3);margin-top:2px}
+.set-select{width:86px;flex-shrink:0}
+.switch{position:relative;display:inline-block;width:46px;height:26px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.switch .sl{position:absolute;inset:0;background:#cbd5e1;border-radius:999px;transition:background .18s;cursor:pointer}
+.switch .sl::before{content:'';position:absolute;width:20px;height:20px;border-radius:50%;background:#fff;top:3px;right:3px;transition:transform .18s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.switch input:checked + .sl{background:var(--brand-500)}
+.switch input:checked + .sl::before{transform:translateX(-20px)}
+.switch input:focus-visible + .sl{outline:2px solid var(--brand-500);outline-offset:2px}
+.n-backup{background:#d9860f}
+.n-restore{background:#0f7fae}
+.n-settings{background:#7c5cbf}
+.brand-logo img{width:100%;height:100%;object-fit:contain;border-radius:inherit}
+@media (max-width:1100px){
+  .ct-grid{grid-template-columns:1fr}
+}
+@media (max-width:900px){
+  .bk-grid{grid-template-columns:1fr}
+}
+
+/* ==========================================================
+   ۱۷) پوسته تاریک — بدون بارگذاری مجدد صفحه اعمال می‌شود
+   ========================================================== */
+[data-theme="dark"]{
+  --brand-50:#1a2b4a; --brand-100:#22355a; --brand-300:#4f7bc0;
+  --brand-500:#5b8def; --brand-600:#3e6cd4; --brand-700:#7ea8f2; --brand-800:#2c4c90;
+  --bg:#0c1424; --surface:#131e33;
+  --text-1:#e4ebf7; --text-2:#9fb0cb; --text-3:#6d7f9d; --border:#24334f;
+  --success:#34d399; --danger:#f87171; --warning:#fbbf24; --info:#38bdf8;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4), 0 1px 3px rgba(0,0,0,.45);
+  --shadow-md:0 10px 28px -8px rgba(0,0,0,.55);
+  --shadow-lg:0 18px 44px -12px rgba(0,0,0,.65);
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb{background:#2c3f63}
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover{background:#3a527e}
+[data-theme="dark"] .icon-btn:hover,[data-theme="dark"] .profile-btn:hover,[data-theme="dark"] .menu-btn:hover,[data-theme="dark"] .btn-ghost:hover,[data-theme="dark"] .page-btn:hover:not(:disabled):not(.active){background:#1d2c4a}
+[data-theme="dark"] .menu-btn.danger:hover{background:rgba(248,113,113,.12)}
+[data-theme="dark"] .btn-danger-ghost{background:rgba(248,113,113,.1);border-color:rgba(248,113,113,.35)}
+[data-theme="dark"] .btn-danger-ghost:hover{background:rgba(248,113,113,.2)}
+[data-theme="dark"] .btn-danger:hover{background:#ef4444}
+[data-theme="dark"] .dropdown-user{background:#16233c}
+[data-theme="dark"] .n-dot,[data-theme="dark"] .notif-item.read .n-dot{background:#44557a}
+[data-theme="dark"] .i-blue{background:rgba(91,141,239,.16);color:#7ea8f2}
+[data-theme="dark"] .i-teal{background:rgba(52,211,153,.14);color:#34d399}
+[data-theme="dark"] .i-purple{background:rgba(167,139,250,.16);color:#a78bfa}
+[data-theme="dark"] .i-amber{background:rgba(251,191,36,.14);color:#fbbf24}
+[data-theme="dark"] .i-red{background:rgba(248,113,113,.15);color:#f87171}
+[data-theme="dark"] .table-wrap thead th{background:#16233c}
+[data-theme="dark"] .table-wrap tbody tr:hover,[data-theme="dark"] .recent-item:hover{background:#1a2946}
+[data-theme="dark"] .hbar{background:#1e2e4d}
+[data-theme="dark"] .chip.teal{background:rgba(15,155,142,.18);color:#2dd4bf}
+[data-theme="dark"] .rp-warn{background:rgba(251,191,36,.08)}
+[data-theme="dark"] .rp-error{background:rgba(248,113,113,.08)}
+[data-theme="dark"] .theme-card.active{background:rgba(91,141,239,.1)}
+[data-theme="dark"] .switch .sl{background:#3a4c6f}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ Navbar ═══════════════ -->
+<header class="navbar">
+  <div class="nav-side nav-start">
+    <button id="burger" class="icon-btn burger" aria-label="باز و بسته کردن منو">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <a class="brand" href="#dashboard">
+      <!-- Placeholder لوگو: آیکون زیر را می‌توانید با لوگوی سازمان خود جایگزین کنید -->
+      <span class="brand-logo" title="لوگو (Placeholder)">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7.5V7a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v.5"/><rect x="5" y="7.5" width="14" height="11" rx="2"/><path d="M5 11.5h14"/></svg>
+      </span>
+      <span class="app-title" id="brandName">سامانه مدیریت قراردادهای پیمانکاری</span>
+    </a>
+  </div>
+
+  <div class="nav-side nav-end">
+    <!-- اعلان‌ها -->
+    <div class="notif-wrap">
+      <button id="bellBtn" class="icon-btn bordered" aria-label="اعلان‌ها">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span id="notifBadge" class="badge"></span>
+      </button>
+      <div id="notifMenu" class="dropdown notif-menu">
+        <div class="dd-head"><b>اعلان‌ها</b><button id="markReadBtn" class="link-btn">خواندن همه</button></div>
+        <div id="notifList" class="notif-list"></div>
+      </div>
+    </div>
+
+    <span class="nav-divider"></span>
+
+    <!-- پروفایل کاربر -->
+    <div class="profile-wrap">
+      <button id="profileBtn" class="profile-btn" aria-label="منوی کاربر">
+        <span class="avatar">م</span>
+        <span class="profile-name">مدیر سامانه</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3)"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div id="profileMenu" class="dropdown profile-menu">
+        <div class="dropdown-user"><b>مدیر سامانه</b><span>دسترسی کامل به سامانه</span></div>
+        <button class="menu-btn" data-profile="profile">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          پروفایل
+        </button>
+        <button class="menu-btn" data-profile="settings">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          تنظیمات
+        </button>
+        <button class="menu-btn danger" data-profile="logout">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          خروج
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div id="drawerOverlay" class="drawer-overlay"></div>
+
+<!-- ═══════════════ Sidebar (راست) ═══════════════ -->
+<aside id="sidebar" class="sidebar">
+  <div class="side-head"><span class="side-title">منوی اصلی</span></div>
+  <nav class="side-nav">
+    <a href="#dashboard" data-page="dashboard" class="side-link active">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      <span>داشبورد</span>
+    </a>
+    <a href="#define" data-page="define" class="side-link">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      <span>تعریف قرارداد</span>
+    </a>
+    <a href="#list" data-page="list" class="side-link">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      <span>لیست قراردادها</span>
+    </a>
+    <a href="#reports" data-page="reports" class="side-link">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+      <span>گزارشات</span>
+    </a>
+    <a href="#contractors" data-page="contractors" class="side-link">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>مدیریت پیمانکاران</span>
+    </a>
+    <div class="side-group">سیستم</div>
+    <a href="#backup" data-page="backup" class="side-link">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+      <span>پشتیبان گیری و بازیابی</span>
+    </a>
+    <a href="#settings" data-page="settings" class="side-link">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+      <span>تنظیمات</span>
+    </a>
+  </nav>
+  <div class="side-foot">نسخه ۲.۰.۰ — سامانه مدیریت قراردادها</div>
+</aside>
+
+<!-- ═══════════════ محتوای اصلی ═══════════════ -->
+<main class="main">
+
+  <!-- ────── صفحه ۱: داشبورد ────── -->
+  <section id="page-dashboard" class="page active">
+    <div class="page-head">
+      <div>
+        <h1>داشبورد مدیریتی</h1>
+        <p>نمای کلی وضعیت قراردادهای پیمانکاری شرکت — به‌صورت لحظه‌ای به‌روزرسانی می‌شود</p>
+      </div>
+      <a href="#define" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        ثبت قرارداد جدید
+      </a>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon i-blue">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <div class="stat-txt"><span class="stat-value" id="stTotal">۰</span><span class="stat-label">تعداد کل قراردادها</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon i-teal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+        </div>
+        <div class="stat-txt"><span class="stat-value" id="stProjects">۰</span><span class="stat-label">تعداد پروژه‌ها</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon i-purple">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+        </div>
+        <div class="stat-txt"><span class="stat-value" id="stContractors">۰</span><span class="stat-label">تعداد پیمانکاران</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon i-amber">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14"/><path d="M9 9h1M14 9h1M9 13h1M14 13h1M9 17h1M14 17h1"/></svg>
+        </div>
+        <div class="stat-txt"><span class="stat-value" id="stDeputies">۰</span><span class="stat-label">تعداد معاونت‌ها</span></div>
+      </div>
+    </div>
+
+    <div class="dash-grid">
+      <div class="card">
+        <div class="card-head"><h3>نمودار تعداد قراردادها بر اساس معاونت</h3></div>
+        <div id="dashChart" class="chart"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>آخرین قراردادهای ثبت‌شده</h3><a href="#list" class="link">مشاهده همه</a></div>
+        <div id="recentList" class="recent-list"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>تعداد قراردادها به تفکیک معاونت</h3></div>
+      <div id="depBreakdown" class="dep-breakdown"></div>
+    </div>
+  </section>
+
+  <!-- ────── صفحه ۲: تعریف قرارداد ────── -->
+  <section id="page-define" class="page">
+    <div class="page-head">
+      <div>
+        <h1>تعریف قرارداد جدید</h1>
+        <p>اطلاعات قرارداد پیمانکاری را تکمیل و ثبت کنید</p>
+      </div>
+    </div>
+
+    <div class="card form-card">
+      <form id="contractForm" novalidate>
+        <div class="form-grid">
+          <div class="field">
+            <label for="cNumber">شماره قرارداد <span class="req">*</span></label>
+            <input type="text" id="cNumber" class="input" placeholder="مثال: C-1404-025">
+            <div class="field-error" id="eNumber"></div>
+          </div>
+
+          <div class="field">
+            <label for="cDate">تاریخ قرارداد <span class="req">*</span></label>
+            <div class="dp-wrap">
+              <input type="text" id="cDate" class="input dp-input" readonly placeholder="انتخاب تاریخ (شمسی)">
+              <span class="dp-ico">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              </span>
+            </div>
+            <div class="field-error" id="eDate"></div>
+          </div>
+
+          <div class="field span-2">
+            <label for="cTitle">عنوان قرارداد <span class="req">*</span></label>
+            <textarea id="cTitle" class="input" rows="3" maxlength="200" placeholder="عنوان کامل و خلاصه موضوع قرارداد را وارد کنید…"></textarea>
+            <div class="field-hint-row">
+              <div class="field-error" id="eTitle"></div>
+              <div class="char-counter" id="titleCounter">۲۰۰ کاراکتر باقی مانده</div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="cContractor">نام پیمانکار <span class="req">*</span></label>
+            <div class="dep-row">
+              <select id="cContractor" class="input"><option value="">انتخاب پیمانکار…</option></select>
+              <a href="#contractors" class="btn btn-outline btn-nowrap" title="رفتن به مدیریت پیمانکاران">مدیریت پیمانکاران</a>
+            </div>
+            <div class="field-error" id="eContractor"></div>
+            <div class="field-hint">فهرست پیمانکاران از بخش «مدیریت پیمانکاران» تأمین می‌شود.</div>
+          </div>
+
+          <div class="field">
+            <label for="cDeputy">معاونت <span class="req">*</span></label>
+            <div class="dep-row">
+              <select id="cDeputy" class="input"><option value="">انتخاب معاونت…</option></select>
+              <button type="button" id="addDeputyBtn" class="btn btn-outline btn-nowrap">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                افزودن معاونت
+              </button>
+            </div>
+            <div class="field-error" id="eDeputy"></div>
+          </div>
+
+          <div class="field">
+            <label for="cDuration">مدت قرارداد <span class="req">*</span></label>
+            <div class="dep-row">
+              <input type="number" id="cDuration" class="input" min="1" max="1200" step="1" inputmode="numeric" placeholder="مثال: 12">
+              <select id="cDurationUnit" class="input unit-select" aria-label="واحد مدت قرارداد">
+                <option value="ماه">ماه</option>
+                <option value="روز">روز</option>
+                <option value="سال">سال</option>
+              </select>
+            </div>
+            <div class="field-error" id="eDuration"></div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            ثبت قرارداد
+          </button>
+          <button type="button" id="resetForm" class="btn btn-ghost">پاک کردن فرم</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ────── صفحه ۳: لیست قراردادها ────── -->
+  <section id="page-list" class="page">
+    <div class="page-head">
+      <div>
+        <h1>لیست قراردادها</h1>
+        <p>مشاهده، جستجو و مدیریت قراردادهای ثبت‌شده</p>
+      </div>
+      <a href="#define" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        ثبت قرارداد جدید
+      </a>
+    </div>
+
+    <div class="filters-card">
+      <div class="search-box">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="fSearch" class="input" placeholder="جستجو: شماره قرارداد، عنوان، پیمانکار یا معاونت…">
+      </div>
+      <select id="fDeputy" class="input f-select"><option value="">همه معاونت‌ها</option></select>
+      <select id="fContractor" class="input f-select"><option value="">همه پیمانکاران</option></select>
+      <div class="dp-wrap f-date">
+        <input type="text" id="fFrom" class="input dp-input" readonly placeholder="از تاریخ">
+        <span class="dp-ico">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </span>
+      </div>
+      <div class="dp-wrap f-date">
+        <input type="text" id="fTo" class="input dp-input" readonly placeholder="تا تاریخ">
+        <span class="dp-ico">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </span>
+      </div>
+      <button id="fClear" class="btn btn-ghost btn-sm">حذف فیلترها</button>
+    </div>
+
+    <div class="table-card">
+      <div class="scroll-hint">برای مشاهده کامل ستون‌ها، جدول را به‌صورت افقی اسکرول کنید.</div>
+      <div class="table-wrap">
+        <table id="contractsTable">
+          <thead>
+            <tr>
+              <th data-sort="number">شماره قرارداد</th>
+              <th data-sort="date">تاریخ قرارداد</th>
+              <th data-sort="title">عنوان قرارداد</th>
+              <th data-sort="contractor">پیمانکار</th>
+              <th data-sort="deputy">معاونت</th>
+              <th data-sort="duration">مدت قرارداد</th>
+              <th>عملیات</th>
+            </tr>
+          </thead>
+          <tbody id="contractsBody"></tbody>
+        </table>
+      </div>
+      <div class="table-foot">
+        <span id="resultCount" class="result-count"></span>
+        <div id="pager" class="pager"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ────── صفحه ۴: گزارشات ────── -->
+  <section id="page-reports" class="page">
+    <div class="page-head">
+      <div>
+        <h1>گزارشات</h1>
+        <p>خلاصه آماری و تحلیل ساده قراردادهای پیمانکاری</p>
+      </div>
+    </div>
+
+    <div id="reportSummary" class="summary-grid"></div>
+
+    <div class="report-grid">
+      <div class="card">
+        <div class="card-head"><h3>تعداد قراردادها بر اساس معاونت</h3></div>
+        <div id="repDeputy" class="hbars"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>تعداد قراردادهای هر پیمانکار</h3></div>
+        <div id="repContractor" class="hbars"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ────── صفحه ۵: مدیریت پیمانکاران ────── -->
+  <section id="page-contractors" class="page">
+    <div class="page-head">
+      <div>
+        <h1>مدیریت پیمانکاران</h1>
+        <p>ثبت، ویرایش و حذف پیمانکاران — فهرست این بخش در فرم ثبت قرارداد استفاده می‌شود</p>
+      </div>
+    </div>
+
+    <div class="ct-grid">
+      <div class="card form-card">
+        <div class="card-head"><h3 id="ctFormTitle">ثبت پیمانکار جدید</h3></div>
+        <form id="contractorForm" novalidate>
+          <div class="field">
+            <label for="ctName">نام پیمانکار <span class="req">*</span></label>
+            <input type="text" id="ctName" class="input" placeholder="نام شخص حقیقی یا عنوان شرکت">
+            <div class="field-error" id="eCtName"></div>
+          </div>
+          <div class="field">
+            <label for="ctType">نوع شخصیت <span class="req">*</span></label>
+            <select id="ctType" class="input">
+              <option value="">انتخاب کنید…</option>
+              <option value="حقیقی">حقیقی</option>
+              <option value="حقوقی">حقوقی</option>
+            </select>
+            <div class="field-error" id="eCtType"></div>
+          </div>
+          <div class="field">
+            <label for="ctGrade">گرید</label>
+            <select id="ctGrade" class="input">
+              <option value="">بدون گرید</option>
+              <option value="1">گرید ۱</option>
+              <option value="2">گرید ۲</option>
+              <option value="3">گرید ۳</option>
+              <option value="4">گرید ۴</option>
+              <option value="5">گرید ۵</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="ctMobile">موبایل</label>
+            <input type="tel" id="ctMobile" class="input" dir="ltr" placeholder="09123456789">
+            <div class="field-error" id="eCtMobile"></div>
+          </div>
+          <div class="field">
+            <label for="ctAddress">آدرس</label>
+            <textarea id="ctAddress" class="input" rows="3" placeholder="نشانی محل فعالیت پیمانکار…"></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="submit" id="ctSubmit" class="btn btn-primary">ثبت پیمانکار</button>
+            <button type="button" id="ctReset" class="btn btn-ghost">پاک کردن فرم</button>
+          </div>
+        </form>
+      </div>
+
+      <div>
+        <div class="filters-card">
+          <div class="search-box">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="ctSearch" class="input" placeholder="جستجو: نام، موبایل یا گرید…">
+          </div>
+        </div>
+        <div class="table-card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>نام پیمانکار</th>
+                  <th>نوع شخصیت</th>
+                  <th>گرید</th>
+                  <th>موبایل</th>
+                  <th>آدرس</th>
+                  <th>قراردادها</th>
+                  <th>عملیات</th>
+                </tr>
+              </thead>
+              <tbody id="ctBody"></tbody>
+            </table>
+          </div>
+          <div class="table-foot">
+            <span id="ctCount" class="result-count"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ────── صفحه ۶: پشتیبان گیری و بازیابی ────── -->
+  <section id="page-backup" class="page">
+    <div class="page-head">
+      <div>
+        <h1>پشتیبان گیری و بازیابی</h1>
+        <p>تهیه نسخه پشتیبان از اطلاعات سامانه و بازیابی اطلاعات از فایل پشتیبان</p>
+      </div>
+    </div>
+
+    <div class="bk-grid">
+      <div class="card">
+        <div class="card-head"><h3>تهیه نسخه پشتیبان (Backup)</h3></div>
+        <div class="card-pad">
+          <p class="bk-desc">از تمام اطلاعات سامانه (قراردادها، پیمانکاران، معاونت‌ها و تنظیمات) در قالب یک فایل JSON نسخه پشتیبان تهیه می‌شود. فایل بلافاصله دانلود شده و سابقه آن (تاریخ، حجم و نام فایل) در «سوابق نسخه‌های پشتیبان» ثبت می‌شود.</p>
+          <div class="backup-scope">
+            <span class="scope-chip"><b id="bkCountContracts">۰</b> قرارداد</span>
+            <span class="scope-chip"><b id="bkCountContractors">۰</b> پیمانکار</span>
+            <span class="scope-chip"><b id="bkCountDeputies">۰</b> معاونت</span>
+            <span class="scope-chip">تنظیمات</span>
+          </div>
+          <button type="button" id="createBackupBtn" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            تهیه نسخه پشتیبان و دانلود
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>بازیابی اطلاعات (Restore)</h3></div>
+        <div class="card-pad">
+          <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="انتخاب فایل پشتیبان">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <b>فایل پشتیبان را اینجا رها کنید</b>
+            <span>یا برای انتخاب فایل JSON روی این کادر کلیک کنید</span>
+          </div>
+          <input type="file" id="restoreInput" accept=".json,application/json" hidden>
+          <div id="restorePreview" hidden></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>سوابق نسخه‌های پشتیبان</h3></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>تاریخ ایجاد</th>
+              <th>حجم فایل</th>
+              <th>نام فایل</th>
+              <th>عملیات</th>
+            </tr>
+          </thead>
+          <tbody id="bkBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ────── صفحه ۷: تنظیمات ────── -->
+  <section id="page-settings" class="page">
+    <div class="page-head">
+      <div>
+        <h1>تنظیمات</h1>
+        <p>شخصی‌سازی سامانه — اطلاعات شرکت، ظاهر برنامه و تنظیمات عمومی</p>
+      </div>
+    </div>
+
+    <div class="settings-grid">
+      <div class="card">
+        <div class="card-head"><h3>اطلاعات شرکت</h3></div>
+        <div class="card-pad">
+          <div class="field">
+            <label for="setName">نام شرکت</label>
+            <input type="text" id="setName" class="input" placeholder="مثال: شرکت صنعتی توسعه">
+          </div>
+          <div class="field">
+            <label>لوگو</label>
+            <div class="logo-row">
+              <div class="logo-preview" id="logoPreview"></div>
+              <div class="logo-actions">
+                <button type="button" id="logoBtn" class="btn btn-outline btn-sm">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  انتخاب تصویر
+                </button>
+                <button type="button" id="logoRemoveBtn" class="btn btn-danger-ghost btn-sm" hidden>حذف لوگو</button>
+                <span class="logo-hint">PNG یا JPG — تصویر به‌صورت خودکار کوچک می‌شود</span>
+              </div>
+            </div>
+            <input type="file" id="logoInput" accept="image/*" hidden>
+          </div>
+          <div class="form-actions">
+            <button type="button" id="saveCompanyBtn" class="btn btn-primary">ذخیره اطلاعات شرکت</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>تنظیمات ظاهری</h3></div>
+        <div class="card-pad">
+          <p class="bk-desc">پوسته نمایشی برنامه — بدون بارگذاری مجدد صفحه اعمال می‌شود.</p>
+          <div class="theme-row">
+            <button type="button" class="theme-card" data-theme-choice="light">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+              <span>پوسته روشن</span>
+            </button>
+            <button type="button" class="theme-card" data-theme-choice="dark">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+              <span>پوسته تاریک</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>تنظیمات عمومی</h3></div>
+        <div class="card-pad">
+          <div class="setting-row">
+            <div>
+              <b>تعداد نمایش رکورد در جدول</b>
+              <span class="setting-sub">تعداد ردیف‌های هر صفحه در لیست قراردادها</span>
+            </div>
+            <select id="setPageSize" class="input set-select">
+              <option value="5">۵</option>
+              <option value="10">۱۰</option>
+              <option value="25">۲۵</option>
+              <option value="50">۵۰</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <div>
+              <b>اعلان‌ها</b>
+              <span class="setting-sub">نمایش اعلان‌های سامانه در نوار بالای صفحه</span>
+            </div>
+            <label class="switch"><input type="checkbox" id="setNotif"><span class="sl"></span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="main-foot">سامانه مدیریت قراردادهای پیمانکاری — نسخه ۳.۰.۰ — ذخیره‌سازی IndexedDB</footer>
+</main>
+
+<!-- ═══════════════ مودال افزودن معاونت ═══════════════ -->
+<div id="modalDeputy" class="modal-overlay">
+  <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="mdTitle">
+    <div class="modal-head">
+      <h3 id="mdTitle">افزودن معاونت جدید</h3>
+      <button id="mdClose" class="icon-btn" aria-label="بستن">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label for="mdName">نام معاونت <span class="req">*</span></label>
+        <input type="text" id="mdName" class="input" placeholder="مثال: معاونت پشتیبانی و خدمات">
+        <div class="field-error" id="mdError"></div>
+        <div class="modal-hint">پس از ثبت، معاونت جدید به‌صورت خودکار در فهرست انتخاب فرم قرارداد قرار می‌گیرد.</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button id="mdSave" class="btn btn-primary">ثبت</button>
+      <button id="mdCancel" class="btn btn-ghost">انصراف</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ مودال تأیید حذف ═══════════════ -->
+<div id="modalDelete" class="modal-overlay">
+  <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="delTitle">
+    <div class="modal-head">
+      <h3 id="delTitle">تأیید حذف قرارداد</h3>
+      <button id="delClose" class="icon-btn" aria-label="بستن">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p>آیا از حذف قرارداد شماره <b id="delNumber" class="ltr c-num"></b> مطمئن هستید؟</p>
+      <p class="danger-text">این عملیات قابل بازگشت نیست و اطلاعات قرارداد به‌طور کامل حذف می‌شود.</p>
+    </div>
+    <div class="modal-foot">
+      <button id="delConfirm" class="btn btn-danger">حذف قرارداد</button>
+      <button id="delCancel" class="btn btn-ghost">انصراف</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ مودال جزئیات قرارداد ═══════════════ -->
+<div id="modalView" class="modal-overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="vwTitle">
+    <div class="modal-head">
+      <h3 id="vwTitle">جزئیات قرارداد</h3>
+      <button id="vwClose" class="icon-btn" aria-label="بستن">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="viewBody"></div>
+    <div class="modal-foot">
+      <button id="vwCloseBtn" class="btn btn-ghost">بستن</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ مودال تأیید عمومی ═══════════════ -->
+<div id="modalConfirm" class="modal-overlay">
+  <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="cfTitle">
+    <div class="modal-head">
+      <h3 id="cfTitle">تأیید</h3>
+      <button id="cfClose" class="icon-btn" aria-label="بستن">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body"><p id="cfMessage"></p></div>
+    <div class="modal-foot">
+      <button id="cfOk" class="btn btn-danger">تأیید</button>
+      <button id="cfCancel" class="btn btn-ghost">انصراف</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<script>
+'use strict';
+/* ════════════════════════════════════════════════════════════
+   ماژول ۱: ابزارهای عمومی
+   ════════════════════════════════════════════════════════════ */
+const $  = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+const FA_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
+const faNum = v => String(v).replace(/\d/g, d => FA_DIGITS[+d]);
+const pad2  = n => String(n).padStart(2, '0');
+
+/* نرمال‌سازی ارقام فارسی/عربی به لاتین (برای جستجو و مقایسه) */
+const normDigits = s => String(s)
+  .replace(/[۰-۹]/g, d => String(d.charCodeAt(0) - 0x06F0))
+  .replace(/[٠-٩]/g, d => String(d.charCodeAt(0) - 0x0660));
+
+/* نرمال‌سازی متن برای جستجوی فارسی (ی/ک عربی، فاصله و حروف کوچک) */
+const normText = s => normDigits(s).trim().replace(/ي/g, 'ی').replace(/ك/g, 'ک').replace(/\s+/g, ' ').toLowerCase();
+
+/* جلوگیری از تزریق HTML در محتوای تولیدی */
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+/* شناسه یکتا */
+const uid = () => (window.crypto && typeof crypto.randomUUID === 'function')
+  ? crypto.randomUUID()
+  : 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
+
+/* ایزوله‌کردن متن چپ‌به‌راست (شماره قرارداد) داخل متن فارسی */
+const ltrIso = s => '\u2066' + s + '\u2069';
+
+/* آیکون‌های SVG مورد استفاده در محتوای تولیدی JavaScript */
+const ICONS = {
+  eye:   '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+  trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  ok:    '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+  warn:  '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+  info:  '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
+  inbox: '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  chevR: '<polyline points="9 18 15 12 9 6"/>',
+  chevL: '<polyline points="15 18 9 12 15 6"/>',
+  fileText: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+  grid:  '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
+  briefcase: '<rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  layers: '<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>',
+  users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  database: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>',
+  sliders: '<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+  edit: '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>',
+  plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'
+};
+const svgI = (name, size = 18) =>
+  `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
+
+/* پالت رنگی سازمانی برای نمودارها */
+const PALETTE  = ['#2a62bd', '#0f9b8e', '#7c5cbf', '#d9860f', '#0f7fae', '#c05a9e', '#5f7d2a', '#c0563f'];
+const PALETTE_D = ['#1d4e9e', '#0b7f75', '#62479f', '#b56b09', '#0b6489', '#9c487f', '#4a6220', '#9c4531'];
+
+/* ════════════════════════════════════════════════════════════
+   ماژول ۲: تبدیل تاریخ شمسی (جلالی) — الگوریتم استاندارد
+   ════════════════════════════════════════════════════════════ */
+const Jalali = (() => {
+  const div = (a, b) => ~~(a / b);
+  const mod = (a, b) => a - ~~(a / b) * b;
+
+  function jalCal(jy) {
+    const breaks = [-61, 9, 38, 199, 426, 686, 756, 818, 1111, 1181, 1210, 1635, 2060, 2097, 2192, 2262, 2324, 2394, 2456, 3178];
+    const bl = breaks.length;
+    const gy = jy + 621;
+    let leapJ = -14, jp = breaks[0], jm, jump, n, i;
+    if (jy < jp || jy >= breaks[bl - 1]) return { leap: 0, gy: gy, march: 21 };
+    for (i = 1; i < bl; i += 1) {
+      jm = breaks[i];
+      jump = jm - jp;
+      if (jy < jm) break;
+      leapJ = leapJ + div(jump, 33) * 8 + div(mod(jump, 33), 4);
+      jp = jm;
+    }
+    n = jy - jp;
+    leapJ = leapJ + div(n, 33) * 8 + div(mod(n, 33) + 3, 4);
+    if (mod(jump, 33) === 4 && jump - n === 4) leapJ += 1;
+    const leapG = div(gy, 4) - div((div(gy, 100) + 1) * 3, 4) - 150;
+    const march = 20 + leapJ - leapG;
+    if (jump - n < 6) n = n - jump + div(jump + 4, 33) * 33;
+    let leap = mod(mod(n + 1, 33) - 1, 4);
+    if (leap === -1) leap = 4;
+    return { leap: leap, gy: gy, march: march };
+  }
+
+  function g2d(gy, gm, gd) {
+    let d = div((gy + div(gm - 8, 6) + 100100) * 1461, 4)
+          + div(153 * mod(gm + 9, 12) + 2, 5) + gd - 34840408;
+    d = d - div(div(gy + 100100 + div(gm - 8, 6), 100) * 3, 4) + 752;
+    return d;
+  }
+
+  function d2g(jdn) {
+    let j = 4 * jdn + 139361631;
+    j = j + div(div(4 * jdn + 183187720, 146097) * 3, 4) * 4 - 3908;
+    const i = div(mod(j, 1461), 4) * 5 + 308;
+    const gd = div(mod(i, 153), 5) + 1;
+    const gm = mod(div(i, 153), 12) + 1;
+    const gy = div(j, 1461) - 100100 + div(8 - gm, 6);
+    return { gy: gy, gm: gm, gd: gd };
+  }
+
+  function j2d(jy, jm, jd) {
+    const r = jalCal(jy);
+    return g2d(r.gy, 3, r.march) + (jm - 1) * 31 - div(jm, 7) * (jm - 7) + jd - 1;
+  }
+
+  function d2j(jdn) {
+    const gy = d2g(jdn).gy;
+    let jy = gy - 621;
+    const r = jalCal(jy);
+    const jdn1f = g2d(gy, 3, r.march);
+    let k = jdn - jdn1f, jm, jd;
+    if (k >= 0) {
+      if (k <= 185) { jm = 1 + div(k, 31); jd = mod(k, 31) + 1; return { jy: jy, jm: jm, jd: jd }; }
+      k -= 186;
+    } else {
+      jy -= 1;
+      k += 179;
+      if (r.leap === 1) k += 1;
+    }
+    jm = 7 + div(k, 30);
+    jd = mod(k, 30) + 1;
+    return { jy: jy, jm: jm, jd: jd };
+  }
+
+  const toJalali    = (gy, gm, gd) => d2j(g2d(gy, gm, gd));
+  const toGregorian = (jy, jm, jd) => d2g(j2d(jy, jm, jd));
+  const isLeapJ     = jy => jalCal(jy).leap === 0;
+  const monthLen    = (jy, jm) => (jm <= 6 ? 31 : jm <= 11 ? 30 : (isLeapJ(jy) ? 30 : 29));
+  const MONTHS   = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+  const WEEKDAYS = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
+
+  function today() {
+    const t = new Date();
+    return toJalali(t.getFullYear(), t.getMonth() + 1, t.getDate());
+  }
+
+  return { toJalali, toGregorian, isLeapJ, monthLen, MONTHS, WEEKDAYS, today };
+})();
+
+/* ════════════════════════════════════════════════════════════
+   ماژول ۳: Toast (پیام‌های کوتاه)
+   ════════════════════════════════════════════════════════════ */
+const Toast = {
+  show(msg, type = 'success') {
+    const wrap = $('#toasts');
+    const iconName = type === 'success' ? 'ok' : (type === 'error' ? 'warn' : 'info');
+    const t = document.createElement('div');
+    t.className = 'toast t-' + type;
+    t.innerHTML = svgI(iconName, 20) + '<span>' + esc(msg) + '</span>';
+    wrap.appendChild(t);
+    setTimeout(() => {
+      t.classList.add('out');
+      setTimeout(() => t.remove(), 350);
+    }, 3400);
+  }
+};
+
+/* ════════════════════════════════════════════════════════════
+   ماژول ۴: پایگاه داده IndexedDB — «ContractManagementDB»
+   Object Store ها:
+     Contracts      → قراردادها {id, contractNumber, date, title, contractorId, deputyId, durationValue, durationUnit, createdAt}
+     Contractors    → پیمانکاران {id, name, type, grade, mobile, address, createdAt}
+     Deputies       → معاونت‌ها {id, name, createdAt}
+     Settings       → تنظیمات (رکورد یکتا با id='app': companyName, theme, logo, generalSettings)
+     BackupHistory  → سوابق پشتیبان {id, fileName, date, size}
+   هیچ اطلاعاتی در LocalStorage ذخیره نمی‌شود.
+   ════════════════════════════════════════════════════════════ */
+const DB = (() => {
+  const NAME = 'ContractManagementDB', VERSION = 1;
+  const KEY = { Contracts: 'id', Contractors: 'id', Deputies: 'id', Settings: 'id', BackupHistory: 'id' };
+  let db = null;
+  /* اگر مرورگر IndexedDB را پشتیبانی نکند، داده‌ها فقط تا پایان نشست در حافظه می‌مانند */
+  const mem = { Contracts: new Map(), Contractors: new Map(), Deputies: new Map(), Settings: new Map(), BackupHistory: new Map() };
+
+  function open() {
+    return new Promise((resolve, reject) => {
+      if (!('indexedDB' in window)) { reject(new Error('IndexedDB not supported')); return; }
+      let req;
+      try { req = indexedDB.open(NAME, VERSION); } catch (e) { reject(e); return; }
+      req.onupgradeneeded = e => {
+        const d = e.target.result;
+        if (!d.objectStoreNames.contains('Contracts')) {
+          const s = d.createObjectStore('Contracts', { keyPath: 'id' });
+          s.createIndex('contractNumber', 'contractNumber', { unique: false });
+          s.createIndex('contractorId', 'contractorId', { unique: false });
+          s.createIndex('deputyId', 'deputyId', { unique: false });
+        }
+        if (!d.objectStoreNames.contains('Contractors')) {
+          const s = d.createObjectStore('Contractors', { keyPath: 'id' });
+          s.createIndex('name', 'name', { unique: false });
+        }
+        if (!d.objectStoreNames.contains('Deputies')) {
+          const s = d.createObjectStore('Deputies', { keyPath: 'id' });
+          s.createIndex('name', 'name', { unique: false });
+        }
+        if (!d.objectStoreNames.contains('Settings')) {
+          d.createObjectStore('Settings', { keyPath: 'id' });
+        }
+        if (!d.objectStoreNames.contains('BackupHistory')) {
+          const s = d.createObjectStore('BackupHistory', { keyPath: 'id' });
+          s.createIndex('date', 'date', { unique: false });
+        }
+      };
+      req.onsuccess = e => {
+        db = e.target.result;
+        db.onversionchange = () => { try { db.close(); } catch (err) { /* ignore */ } };
+        resolve(db);
+      };
+      req.onerror = e => reject((e.target && e.target.error) || new Error('IndexedDB open failed'));
+      req.onblocked = () => reject(new Error('IndexedDB blocked'));
+    });
+  }
+
+  const P = r => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+  const st = (s, m) => db.transaction(s, m).objectStore(s);
+
+  return {
+    open,
+    isMemory: () => !db,
+    async put(s, o)    { if (!db) { mem[s].set(o[KEY[s]], o); return o; } return P(st(s, 'readwrite').put(o)); },
+    async get(s, k)    { if (!db) return mem[s].get(k); return P(st(s, 'readonly').get(k)); },
+    async getAll(s)    { if (!db) return Array.from(mem[s].values()); return P(st(s, 'readonly').getAll()); },
+    async delete(s, k) { if (!db) { mem[s].delete(k); return; } return P(st(s, 'readwrite').delete(k)); },
+    async clear(s)     { if (!db) { mem[s].clear(); return; } return P(st(s, 'readwrite').clear()); },
+    async count(s)     { if (!db) return mem[s].size; return P(st(s, 'readonly').count()); },
+    /* درج گروهی در یک تراکنش واحد (برای Restore) */
+    async bulkPut(s, arr) {
+      if (!db) { arr.forEach(o => mem[s].set(o[KEY[s]], o)); return; }
+      return new Promise((res, rej) => {
+        const t = db.transaction(s, 'readwrite'), os = t.objectStore(s);
+        arr.forEach(o => os.put(o));
+        t.oncomplete = () => res();
+        t.onerror = () => rej(t.error);
+        t.onabort = () => rej(t.error);
+      });
+    }
+  };
+})();
+
+/* ════════════════════════════════════════════════════════════
+   ماژول ۴-الف: لایه وضعیت — کش درون‌حافظه + ذخیره فوری در IndexedDB
+   برنامه پس از نخستین اجرا کاملاً خالی است (بدون Seed و داده آزمایشی).
+   ════════════════════════════════════════════════════════════ */
+const DEFAULT_SETTINGS = {
+  id: 'app', companyName: '', logo: '', theme: 'light',
+  generalSettings: { pageSize: 10, notificationsEnabled: true }
+};
+
+const Store = {
+  contracts: [], deputies: [], contractors: [], backups: [],
+  settings: JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),
+
+  /* بارگذاری اولیه: باز کردن پایگاه داده و خواندن Store ها (بدون هیچ داده پیش‌فرض) */
+  async init() {
+    try {
+      await DB.open();
+    } catch (e) {
+      Toast.show('پشتیبانی IndexedDB در این مرورگر فعال نیست؛ اطلاعات فقط تا پایان این نشست نگه داشته می‌شود.', 'error');
+    }
+    const rows = await Promise.all([
+      DB.getAll('Contracts'), DB.getAll('Contractors'), DB.getAll('Deputies'), DB.getAll('BackupHistory')
+    ]);
+    this.contracts = rows[0];
+    this.contractors = rows[1];
+    this.deputies = rows[2];
+    this.backups = rows[3];
+    const rec = await DB.get('Settings', 'app');
+    this.settings = Object.assign({}, JSON.parse(JSON.stringify(DEFAULT_SETTINGS)), rec || {});
+    this.settings.generalSettings = Object.assign(
+      {}, DEFAULT_SETTINGS.generalSettings, (rec && rec.generalSettings) || {}
+    );
+    this.settings.id = 'app';
+  },
+
+  /* ── قراردادها: هر تغییر بلافاصله (Auto Save) در IndexedDB ثبت می‌شود ── */
+  async saveContract(c) {
+    if (!this.contracts.some(x => x.id === c.id)) this.contracts.push(c);
+    await DB.put('Contracts', c);
+  },
+  async removeContract(id) {
+    this.contracts = this.contracts.filter(x => x.id !== id);
+    await DB.delete('Contracts', id);
+  },
+
+  /* ── پیمانکاران ── */
+  async saveContractor(c) {
+    if (!this.contractors.some(x => x.id === c.id)) this.contractors.push(c);
+    await DB.put('Contractors', c);
+  },
+  async removeContractor(id) {
+    this.contractors = this.contractors.filter(x => x.id !== id);
+    await DB.delete('Contractors', id);
+  },
+
+  /* ── معاونت‌ها ── */
+  async saveDeputy(d) {
+    if (!this.deputies.some(x => x.id === d.id)) this.deputies.push(d);
+    await DB.put('Deputies', d);
+  },
+
+  /* ── تنظیمات ── */
+  async saveSettings() { await DB.put('Settings', this.settings); },
+
+  /* ── سوابق پشتیبان ── */
+  async addBackupMeta(meta) {
+    await DB.put('BackupHistory', meta);
+    this.backups.unshift(meta);
+  },
+  async removeBackupMeta(id) {
+    this.backups = this.backups.filter(b => b.id !== id);
+    await DB.delete('BackupHistory', id);
+  },
+
+  /* ── جایگزینی کامل اطلاعات پایگاه داده (Restore) ── */
+  async replaceAll(data) {
+    await DB.clear('Contracts');
+    await DB.clear('Contractors');
+    await DB.clear('Deputies');
+    await DB.bulkPut('Contracts', data.contracts);
+    await DB.bulkPut('Contractors', data.contractors);
+    await DB.bulkPut('Deputies', data.deputies);
+    this.contracts = data.contracts;
+    this.contractors = data.contractors;
+    this.deputies = data.deputies;
+    await this.saveSettings();
+  }
+};
+
+/* نام پیمانکار / معاونت بر اساس شناسه */
+function conName(id) { const c = Store.contractors.find(x => x.id === id); return c ? c.name : '—'; }
+function depName(id) { const d = Store.deputies.find(x => x.id === id); return d ? d.name : '—'; }
+
+/* ════════════════════════════════════════════════════════════
+   ماژول ۴-ب: پوسته (تم) — تغییر بدون بارگذاری مجدد صفحه
+   ════════════════════════════════════════════════════════════ */
+const Theme = {
+  apply() {
+    const t = Store.settings.theme === 'dark' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', t);
+    try { document.documentElement.style.colorScheme = t; } catch (e) { /* ignore */ }
+    const logo = document.querySelector('.brand-logo');
+    if (logo) {
+      if (!logo.dataset.fallback) logo.dataset.fallback = logo.innerHTML;
+      logo.innerHTML = Store.settings.logo ? '<img src="' + Store.settings.logo + '" alt="لوگو">' : logo.dataset.fallback;
+    }
+    const nm = $('#brandName');
+    if (nm) nm.textContent = Store.settings.companyName || 'سامانه مدیریت قراردادهای پیمانکاری';
+  },
+  async set(t) {
+    Store.settings.theme = t === 'dark' ? 'dark' : 'light';
+    try { await Store.saveSettings(); } catch (e) { /* ignore */ }
+    this.apply();
+  }
+};
+
+/* ════════════════════════════════════════════════════════════
+   ماژول ۵: توابع کمکی نمایش
+   ════════════════════════════════════════════════════════════ */
+/* تاریخ و ساعت ثبت (میلادی → شمسی) */
+function stamp(ts) {
+  const d = new Date(ts);
+  const j = Jalali.toJalali(d.getFullYear(), d.getMonth() + 1, d.getDate());
+  return faNum(`${j.jy}/${pad2(j.jm)}/${pad2(j.jd)}`) + ' - ' + faNum(pad2(d.getHours()) + ':' + pad2(d.getMinutes()));
+}
+
+/* «چند وقت پیش» برای اعلان‌ها */
+function timeAgo(ts) {
+  const min = (Date.now() - ts) / 60000;
+  if (min < 1) return 'لحظاتی پیش';
+  if (min < 60) return faNum(Math.floor(min)) + ' دقیقه پیش';
+  const h = min / 60;
+  if (h < 24) return faNum(Math.floor(h)) + ' ساعت پیش';
+  const d = h / 24;
+  if (d < 30) return faNum(Math.floor(d)) + ' روز پیش';
+  const dd = new Date(ts);
+  const j = Jalali.toJalali(dd.getFullYear(), dd.getMonth() + 1, dd.getDate());
+  return faNum(`${j.jy}/${pad2(j.jm)}/${pad2(j.jd)}`);
+}
+
+const emptyBox = msg => `<div class="empty-box">${svgI('inbox', 30)}<span>${esc(msg)}</span></div>`;
+
+/* ساخت ردیف‌های صفحه‌بندی (با سه‌نقطه) */
+function pageList(totalPages, current) {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+  const set = new Set([1, 2, totalPages - 1, totalPages, current - 1, current, current + 1]);
+  const arr = [...set].filter(p => p >= 1 && p <= totalPages).sort((a, b) => a - b);
+  const out = [];
+  let prev = 0;
+  for (const p of arr) {
+    if (p - prev > 1) out.push('…');
+    out.push(p);
+    prev = p;
+  }
+  return out;
+}
+
+/* ════════════════════════════════════════════════════════════
+   ماژول ۶: مدیریت مودال‌ها
+   (مودال «افزودن معاونت» عمداً غیرقابل بستن با کلیک بیرون و
+    کلید Escape است — مطابق الزام پروژه)
+   ════════════════════════════════════════════════════════════ */
+const Modal = {
+  open(id, opts = {}) {
+    const ov = document.getElementById(id);
+    if (!ov) return;
+    ov.classList.add('open');
+    ov._dismissible = opts.dismissible !== false;
+    document.body.classList.add('no-scroll');
+    if (typeof opts.onOpen === 'function') opts.onOpen();
+  },
+  close(id) {
+    const ov = document.getElementById(id);
+    if (!ov) return;
+    ov.classList.remove('open');
+    ov._dismissible = undefined;
+    if (!$('.modal-overlay.open')) document.body.classList.remove('no-scroll');
+    /* اگر مودال تأیید با کلیک بیرون یا Escape بسته شد → یعنی «انصراف» */
+    if (id === 'modalConfirm' && Confirm._resolve) {
+      const r = Confirm._resolve;
+      Confirm._resolve = null;
+      r(false);
+    }
+  },
+  topOpen() {
+    const open = $$('.modal-overlay.open');
+    return open[open.length - 1] || null;
+  }
+};
+
+document.addEventListener('click', e => {
+  const ov = e.target.classList && e.target.classList.contains('modal-overlay') ? e.target : null;
+  if (ov && ov._dismissible) Modal.close(ov.id);
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const top = Modal.topOpen();
+  if (top) {
+    if (top._dismissible) Modal.close(top.id);
+    return;
+  }
+  if (DP.isOpen()) { DP.close(); return; }
+  UI.closeDropdowns();
+});
+
+/* ════════════════════════════════════════════════════════════
+   ماژول ۶-ب: تأیید عمومی (Promise-based)
+   ════════════════════════════════════════════════════════════ */
+const Confirm = {
+  _resolve: null,
+  ask(title, message, okText, danger = true) {
+    $('#cfTitle').textContent = title;
+    $('#cfMessage').textContent = message;
+    const ok = $('#cfOk');
+    ok.textContent = okText || 'تأیید';
+    ok.className = 'btn ' + (danger ? 'btn-danger' : 'btn-primary');
+    Modal.open('modalConfirm');
+    return new Promise(res => { this._resolve = res; });
+  },
+  _done(v) {
+    const r = this._resolve;
+    this._resolve = null;
+    Modal.close('modalConfirm');
+    if (r) r(v);
+  }
+};
+
+/* ════════════════════════════════════════════════════════════
+   ماژول ۷: تقویم شمسی (Date Picker) — پاپ‌آپ مشترک
+   ════════════════════════════════════════════════════════════ */
+const DP = (() => {
+  let pop = null, input = null, view = null;
+
+  function ensure() {
+    if (pop) return;
+    pop = document.createElement('div');
+    pop.className = 'jdp';
+    pop.setAttribute('role', 'dialog');
+    pop.setAttribute('aria-label', 'انتخاب تاریخ شمسی');
+    document.body.appendChild(pop);
+    pop.addEventListener('click', onPopClick);
+  }
+
+  const isOpen = () => !!(pop && pop.classList.contains('open'));
+
+  function parse(s) {
+    const p = String(s).split('/').map(Number);
+    return { jy: p[0], jm: p[1], jd: p[2] };
+  }
+
+  function openFor(inp) {
+    ensure();
+    input = inp;
+    const v = inp.dataset.value;
+    view = v ? parse(v) : Jalali.today();
+    pop.classList.add('open');
+    render();
+    /* موقعیت‌دهی پاپ‌آپ زیر فیلد */
+    const r = inp.getBoundingClientRect();
+    const W = pop.offsetWidth;
+    let left = Math.min(Math.max(8, r.right - W), window.innerWidth - W - 8);
+    if (left < 8) left = 8;
+    let top = r.bottom + 8;
+    if (top + pop.offsetHeight > window.innerHeight - 8) top = Math.max(8, r.top - pop.offsetHeight - 8);
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+  }
+
+  function close() {
+    if (pop) pop.classList.remove('open');
+    input = null;
+  }
+
+  function setVal(v) {
+    if (!input) return;
+    input.dataset.value = v;
+    input.value = v ? faNum(v) : '';
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function select(o) {
+    setVal(`${o.jy}/${pad2(o.jm)}/${pad2(o.jd)}`);
+    close();
+  }
+
+  function move(d) {
+    let m = view.jm + d, y = view.jy;
+    if (m > 12) { m = 1; y += 1; }
+    if (m < 1) { m = 12; y -= 1; }
+    if (y < 1300 || y > 1500) return;
+    view = { jy: y, jm: m };
+    render();
+  }
+
+  function onPopClick(e) {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const act = btn.dataset.act;
+    if (act === 'prev') move(-1);
+    else if (act === 'next') move(1);
+    else if (act === 'today') select(Jalali.today());
+    else if (act === 'clear') { setVal(''); close(); }
+    else if (act === 'day') select({ jy: view.jy, jm: view.jm, jd: +btn.dataset.d });
+  }
+
+  function render() {
+    const sel = (input && input.dataset.value) ? parse(input.dataset.value) : null;
+    const td = Jalali.today();
+    const g = Jalali.toGregorian(view.jy, view.jm, 1);
+    const startCol = (new Date(g.gy, g.gm - 1, g.gd).getDay() + 1) % 7; /* شنبه = ستون اول */
+    const len = Jalali.monthLen(view.jy, view.jm);
+    let cells = '';
+    for (let i = 0; i < startCol; i++) cells += '<span class="jdp-empty"></span>';
+    for (let d = 1; d <= len; d++) {
+      const isSel = sel && sel.jy === view.jy && sel.jm === view.jm && sel.jd === d;
+      const isToday = td.jy === view.jy && td.jm === view.jm && td.jd === d;
+      cells += `<button type="button" data-act="day" data-d="${d}" class="jdp-day${isSel ? ' sel' : ''}${isToday ? ' today' : ''}">${faNum(d)}</button>`;
+    }
+    pop.innerHTML = `
+      <div class="jdp-head">
+        <button type="button" class="jdp-nav" data-act="prev" aria-label="ماه قبل">${svgI('chevR', 15)}</button>
+        <div class="jdp-title">${Jalali.MONTHS[view.jm - 1]} ${faNum(view.jy)}</div>
+        <button type="button" class="jdp-nav" data-act="next" aria-label="ماه بعد">${svgI('chevL', 15)}</button>
+      </div>
+      <div class="jdp-grid">
+        ${Jalali.WEEKDAYS.map(w => `<span class="jdp-wd">${w}</span>`).join('')}
+        ${cells}
+      </div>
+      <div class="jdp-foot">
+        <button type="button" class="jdp-today" data-act="today">امروز</button>
+        <button type="button" class="jdp-clear" data-act="clear">پاک کردن</button>
+      </div>`;
+  }
+
+  /* بستن با کلیک بیرون / اسکرول / تغییر اندازه */
+  document.addEventListener('click', e => {
+    if (!isOpen()) return;
+    if (pop.contains(e.target)) return;
+    if (input && (e.target === input || input.contains(e.target))) return;
+    close();
+  });
+  window.addEventListener('scroll', () => { if (isOpen()) close(); }, true);
+  window.addEventListener('resize', () => { if (isOpen()) close(); });
+
+  return { openFor, close, isOpen };
+})();
+
+/* اتصال همه فیلدهای تاریخ */
+function bindDatePickers() {
+  $$('.dp-input').forEach(inp => {
+    inp.addEventListener('click', () => {
+      if (DP.isOpen()) DP.close(); else DP.openFor(inp);
+    });
+  });
+}
+
+/* ════════════════════════════════════════════════════════════
+   ماژول ۸: اعلان‌ها
+   ════════════════════════════════════════════════════════════ */
+const Notifs = {
+  list: [],
+  /* اعلان‌ها فقط برای نشست جاری نگهداری می‌شوند (بدون هیچ داده نمونه و بدون ذخیره‌سازی) */
+  load() { this.list = []; },
+  save() { /* ذخیره‌سازی اعلان‌ها حذف شده است */ },
+  add(text, type) {
+    if (!Store.settings.generalSettings.notificationsEnabled) return; /* اعلان‌ها غیرفعال است */
+    this.list.unshift({ id: uid(), text: text, type: type, ts: Date.now(), read: false });
+    this.save();
+    this.render();
+  },
+  unread() { return this.list.filter(n => !n.read).length; },
+  markAll() {
+    this.list.forEach(n => { n.read = true; });
+    this.save();
+    this.render();
+  },
+  render() {
+    const badge = $('#notifBadge');
+    /* اگر اعلان‌ها در تنظیمات غیرفعال شده باشد */
+    if (!Store.settings.generalSettings.notificationsEnabled) {
+      badge.style.display = 'none';
+      $('#notifList').innerHTML = `<div class="notif-empty">${svgI('info', 26)}<span>اعلان‌ها در بخش تنظیمات غیرفعال شده است.</span></div>`;
+      return;
+    }
+    const u = this.unread();
+    badge.style.display = u ? 'grid' : 'none';
+    badge.textContent = faNum(u);
+    const listEl = $('#notifList');
+    if (!this.list.length) {
+      listEl.innerHTML = `<div class="notif-empty">${svgI('inbox', 26)}<span>اعلانی وجود ندارد</span></div>`;
+      return;
+    }
+    listEl.innerHTML = this.list.map(n => `
+      <div class="notif-item${n.read ? ' read' : ''}">
+        <span class="n-dot n-${esc(n.type)}"></span>
+        <div class="n-body"><span>${esc(n.text)}</span><time>${timeAgo(n.ts)}</time></div>
+      </div>`).join('');
+  }
+};
+
+/* ════════════════════════════════════════════════════════════
+   ماژول ۹: Navbar (دراپ‌داون‌ها، منوی موبایل، منوی پروفایل)
+   ════════════════════════════════════════════════════════════ */
+const UI = {
+  init() {
+    /* دراپ‌داون اعلان‌ها */
+    $('#bellBtn').addEventListener('click', () => {
+      const m = $('#notifMenu');
+      const wasOpen = m.classList.contains('open');
+      this.closeDropdowns();
+      if (!wasOpen) m.classList.add('open');
+    });
+    $('#markReadBtn').addEventListener('click', () => Notifs.markAll());
+
+    /* دراپ‌داون پروفایل */
+    $('#profileBtn').addEventListener('click', () => {
+      const m = $('#profileMenu');
+      const wasOpen = m.classList.contains('open');
+      this.closeDropdowns();
+      if (!wasOpen) m.classList.add('open');
+    });
+    $$('#profileMenu .menu-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.closeDropdowns();
+        if (btn.dataset.profile === 'settings') { Router.go('settings', false); return; }
+        Toast.show('این بخش در نسخه فعلی سامانه فعال نیست.', 'info');
+      });
+    });
+
+    /* بستن دراپ‌داون‌ها با کلیک بیرون */
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.notif-wrap')) $('#notifMenu').classList.remove('open');
+      if (!e.target.closest('.profile-wrap')) $('#profileMenu').classList.remove('open');
+    });
+
+    /* منوی موبایل (Drawer) */
+    const sidebar = $('#sidebar'), dov = $('#drawerOverlay');
+    const setDrawer = open => {
+      sidebar.classList.toggle('open', open);
+      dov.classList.toggle('show', open);
+      document.body.classList.toggle('no-scroll', open || !!Modal.topOpen());
+    };
+    $('#burger').addEventListener('click', () => setDrawer(!sidebar.classList.contains('open')));
+    dov.addEventListener('click', () => setDrawer(false));
+    window._closeDrawer = () => setDrawer(false);
+  },
+  closeDropdowns() {
+    $('#notifMenu').classList.remove('open');
+    $('#profileMenu').classList.remove('open');
+  }
+};
+
+/* ════════════════════════════════════════════════════════════
+   ماژول ۱۰: داشبورد
+   ════════════════════════════════════════════════════════════ */
+const Dashboard = {
+  byDeputy(cs) {
+    const map = new Map();
+    Store.deputies.forEach(d => map.set(d.name, 0));
+    cs.forEach(c => { const nm = depName(c.deputyId); map.set(nm, (map.get(nm) || 0) + 1); });
+    return map;
+  },
+  render() {
+    const cs = Store.contracts;
+    $('#stTotal').textContent = faNum(cs.length);
+    $('#stProjects').textContent = faNum(new Set(cs.map(c => normText(c.title))).size);
+    $('#stContractors').textContent = faNum(Store.contractors.length);
+    $('#stDeputies').textContent = faNum(Store.deputies.length);
+    this.chart(cs);
+    this.recent(cs);
+    this.breakdown(cs);
+  },
+  chart(cs) {
+    const el = $('#dashChart');
+    if (!cs.length) { el.innerHTML = emptyBox('هنوز قراردادی ثبت نشده است؛ پس از ثبت قرارداد، نمودار در این قسمت نمایش داده می‌شود.'); return; }
+    const entries = [...this.byDeputy(cs).entries()];
+    const max = Math.max(...entries.map(x => x[1]), 1);
+    el.innerHTML = entries.map(([d, n], i) => `
+      <div class="bar-col" title="${esc(d)}: ${faNum(n)} قرارداد">
+        <span class="bar-value">${faNum(n)}</span>
+        <div class="bar" style="height:calc((100% - 70px) * ${(n / max).toFixed(3)});background:linear-gradient(180deg, ${PALETTE[i % PALETTE.length]}, ${PALETTE_D[i % PALETTE_D.length]})"></div>
+        <span class="bar-label">${esc(d)}</span>
+      </div>`).join('');
+  },
+  recent(cs) {
+    const el = $('#recentList');
+    if (!cs.length) {
+      el.innerHTML = `<div class="empty-mini">${svgI('inbox', 26)}<span>هنوز قراردادی ثبت نشده است</span><a href="#define" class="btn btn-primary btn-sm">ثبت اولین قرارداد</a></div>`;
+      return;
+    }
+    const last = [...cs].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
+    el.innerHTML = last.map(c => `
+      <a class="recent-item" href="#list" title="${esc(c.title)}">
+        <div class="recent-txt">
+          <b>${esc(c.title)}</b>
+          <span>${esc(conName(c.contractorId))}</span>
+        </div>
+        <div class="recent-side">
+          <span class="chip" title="${esc(depName(c.deputyId))}">${esc(depName(c.deputyId))}</span>
+          <span class="recent-num ltr">${esc(c.contractNumber)}</span>
+          <span class="recent-date">${faNum(c.date)}</span>
+        </div>
+      </a>`).join('');
+  },
+  breakdown(cs) {
+    const entries = [...this.byDeputy(cs).entries()];
+    const max = Math.max(...entries.map(x => x[1]), 1);
+    $('#depBreakdown').innerHTML = entries.map(([d, n], i) => `
+      <div class="dep-row-item">
+        <span class="dep-name" title="${esc(d)}">${esc(d)}</span>
+        <div class="dep-bar"><span style="width:${(n / max * 100).toFixed(1)}%;background:${PALETTE[i % PALETTE.length]}"></span></div>
+        <span class="dep-count">${faNum(n)}</span>
+      </div>`).join('');
+  }
+};
+
+/* ════════════════════════════════════════════════════════════
+   ماژول ۱۱: فرم تعریف قرارداد + مودال افزودن معاونت
+   ════════════════════════════════════════════════════════════ */
+const Form = {
+  MAX_TITLE: 200,
+  init() {
+    this.fillDeputySelect('');
+    this.fillContractorSelect('');
+
+    /* شمارنده کاراکتر عنوان */
+    const t = $('#cTitle'), counter = $('#titleCounter');
+    const updateCounter = () => {
+      const rem = this.MAX_TITLE - t.value.length;
+      counter.textContent = `${faNum(rem)} کاراکتر باقی مانده`;
+      counter.classList.toggle('warn', rem <= 30 && rem > 0);
+      counter.classList.toggle('danger', rem <= 0);
+    };
+    t.addEventListener('input', updateCounter);
+    updateCounter();
+
+    /* ثبت فرم */
+    $('#contractForm').addEventListener('submit', e => { e.preventDefault(); this.submit(); });
+    $('#resetForm').addEventListener('click', () => this.reset(true));
+
+    /* پاک شدن خطاها هنگام اصلاح */
+    [['cNumber', '#eNumber'], ['cTitle', '#eTitle'], ['cDuration', '#eDuration']]
+      .forEach(([id, err]) => $('#' + id).addEventListener('input', () => this.clrErr(err)));
+    $('#cDate').addEventListener('change', () => this.clrErr('#eDate'));
+    $('#cDeputy').addEventListener('change', () => this.clrErr('#eDeputy'));
+    $('#cContractor').addEventListener('change', () => this.clrErr('#eContractor'));
+
+    /* مودال افزودن معاونت */
+    $('#addDeputyBtn').addEventListener('click', () => this.openDeputyModal());
+    $('#mdClose').addEventListener('click', () => Modal.close('modalDeputy'));
+    $('#mdCancel').addEventListener('click', () => Modal.close('modalDeputy'));
+    $('#mdSave').addEventListener('click', () => this.saveDeputy());
+    $('#mdName').addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); this.saveDeputy(); }
+    });
+    $('#mdName').addEventListener('input', () => this.clrErr('#mdError'));
+  },
+  fillDeputySelect(selectVal) {
+    const s = $('#cDeputy');
+    s.innerHTML = '<option value="">انتخاب معاونت…</option>' +
+      Store.deputies.map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('');
+    if (selectVal) s.value = selectVal;
+  },
+  fillContractorSelect(selectVal) {
+    const s = $('#cContractor');
+    const col = new Intl.Collator('fa');
+    const cons = [...Store.contractors].sort((a, b) => col.compare(a.name, b.name));
+    s.innerHTML = '<option value="">انتخاب پیمانکار…</option>' +
+      cons.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+    if (selectVal && cons.some(c => c.id === selectVal)) s.value = selectVal;
+  },
+  setErr(sel, msg) {
+    const el = $(sel);
+    el.textContent = msg;
+    const f = el.closest('.field');
+    if (f) f.classList.add('has-error');
+  },
+  clrErr(sel) {
+    const el = $(sel);
+    el.textContent = '';
+    const f = el.closest('.field');
+    if (f) f.classList.remove('has-error');
+  },
+  openDeputyModal() {
+    $('#mdName').value = '';
+    this.clrErr('#mdError');
+    Modal.open('modalDeputy', {
+      dismissible: false, /* طبق الزام: کلیک بیرون و Escape این مودال را نمی‌بندد */
+      onOpen: () => setTimeout(() => $('#mdName').focus(), 60)
+    });
+  },
+  async saveDeputy() {
+    const name = $('#mdName').value.trim().replace(/\s+/g, ' ');
+    if (!name) { this.setErr('#mdError', 'نام معاونت را وارد کنید.'); return; }
+    if (Store.deputies.some(d => normText(d.name) === normText(name))) {
+      this.setErr('#mdError', 'این معاونت قبلاً ثبت شده است.');
+      return;
+    }
+    const dp = { id: uid(), name: name, createdAt: Date.now() };
+    try { await Store.saveDeputy(dp); }
+    catch (e) { Toast.show('ثبت معاونت در پایگاه داده ناموفق بود.', 'error'); return; }
+    this.fillDeputySelect(dp.id); /* به‌روزرسانی خودکار Select و انتخاب معاونت جدید */
+    Notifs.add(`معاونت «${name}» به سامانه افزوده شد.`, 'deputy');
+    Modal.close('modalDeputy');
+    Toast.show('معاونت جدید با موفقیت ثبت شد.');
+    Dashboard.render();
+    Reports.render();
+    List.fillFilters();
+  },
+  async submit() {
+    const number = $('#cNumber').value.trim();
+    const date = $('#cDate').dataset.value || '';
+    const title = $('#cTitle').value.trim();
+    const contractorId = $('#cContractor').value;
+    const deputyId = $('#cDeputy').value;
+    const durationUnit = $('#cDurationUnit').value || 'ماه';
+    const dvRaw = normDigits($('#cDuration').value.trim());
+    const dv = Number(dvRaw);
+
+    let ok = true, firstField = null;
+    const fail = (errSel, inputSel, msg) => {
+      this.setErr(errSel, msg);
+      ok = false;
+      if (!firstField) firstField = $(inputSel);
+    };
+
+    if (!number) fail('#eNumber', '#cNumber', 'شماره قرارداد را وارد کنید.');
+    else if (Store.contracts.some(c => normText(c.contractNumber) === normText(number)))
+      fail('#eNumber', '#cNumber', 'این شماره قرارداد قبلاً ثبت شده است.');
+    if (!date) fail('#eDate', '#cDate', 'تاریخ قرارداد را انتخاب کنید.');
+    if (!title) fail('#eTitle', '#cTitle', 'عنوان قرارداد را وارد کنید.');
+    if (!contractorId) fail('#eContractor', '#cContractor', 'پیمانکار را انتخاب کنید؛ در صورت نیاز ابتدا از بخش «مدیریت پیمانکاران» ثبت کنید.');
+    if (!deputyId) fail('#eDeputy', '#cDeputy', 'معاونت را انتخاب کنید.');
+    if (!dvRaw || !Number.isFinite(dv) || dv < 1 || Math.floor(dv) !== dv || dv > 1200)
+      fail('#eDuration', '#cDuration', 'مدت قرارداد را به‌صورت عدد صحیح وارد کنید.');
+
+    if (!ok) {
+      Toast.show('لطفاً خطاهای مشخص‌شده در فرم را برطرف کنید.', 'error');
+      if (firstField) firstField.focus();
+      return;
+    }
+
+    const rec = {
+      id: uid(), contractNumber: number, date: date, title: title,
+      contractorId: contractorId, deputyId: deputyId,
+      durationValue: dv, durationUnit: durationUnit, createdAt: Date.now()
+    };
+    try { await Store.saveContract(rec); }
+    catch (e) { Toast.show('ثبت قرارداد در پایگاه داده ناموفق بود.', 'error'); return; }
+    Notifs.add(`قرارداد «${number}» با موفقیت ثبت شد.`, 'contract');
+    this.reset(false);
+    Toast.show('قرارداد با موفقیت ثبت شد.');
+    refreshData();
+  },
+  reset(focus) {
+    $('#contractForm').reset();
+    $('#cDate').dataset.value = '';
+    $('#cDate').value = '';
+    ['#eNumber', '#eDate', '#eTitle', '#eContractor', '#eDeputy', '#eDuration'].forEach(s => this.clrErr(s));
+    $('#cTitle').dispatchEvent(new Event('input'));
+    if (focus) $('#cNumber').focus();
+  }
+};
+
+/* ════════════════════════════════════════════════════════════
+   ماژول ۱۲: لیست قراردادها (جستجو، فیلتر، مرتب‌سازی، صفحه‌بندی)
+   ════════════════════════════════════════════════════════════ */
+const List = {
+  state: { q: '', deputy: '', contractor: '', from: '', to: '', sortKey: 'createdAt', sortDir: 'desc', page: 1, pageSize: 10 },
+  _pendingDelete: null,
+
+  init() {
+    this.state.pageSize = +Store.settings.generalSettings.pageSize || 10;
+    $('#fSearch').addEventListener('input', e => { this.state.q = e.target.value; this.state.page = 1; this.render(); });
+    $('#fDeputy').addEventListener('change', e => { this.state.deputy = e.target.value; this.state.page = 1; this.render(); });
+    $('#fContractor').addEventListener('change', e => { this.state.contractor = e.target.value; this.state.page = 1; this.render(); });
+    $('#fFrom').addEventListener('change', e => { this.state.from = e.target.dataset.value || ''; this.state.page = 1; this.render(); });
+    $('#fTo').addEventListener('change', e => { this.state.to = e.target.dataset.value || ''; this.state.page = 1; this.render(); });
+    $('#fClear').addEventListener('click', () => this.clearFilters());
+
+    /* مرتب‌سازی ستون‌ها */
+    $$('#contractsTable thead th[data-sort]').forEach(th =>
+      th.addEventListener('click', () => this.sort(th.dataset.sort)));
+
+    /* دکمه‌های عملیات ردیف‌ها (Event Delegation) */
+    $('#contractsBody').addEventListener('click', e => {
+      const btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+      if (btn.dataset.act === 'view') this.view(btn.dataset.id);
+      else this.askDelete(btn.dataset.id);
+    });
+
+    /* صفحه‌بندی */
+    $('#pager').addEventListener('click', e => {
+      const b = e.target.closest('button[data-page]');
+      if (!b || b.disabled) return;
+      this.state.page = +b.dataset.page;
+      this.render();
+    });
+
+    /* مودال حذف */
+    $('#delConfirm').addEventListener('click', () => this.confirmDelete());
+    $('#delCancel').addEventListener('click', () => Modal.close('modalDelete'));
+    $('#delClose').addEventListener('click', () => Modal.close('modalDelete'));
+
+    /* مودال جزئیات */
+    $('#vwClose').addEventListener('click', () => Modal.close('modalView'));
+    $('#vwCloseBtn').addEventListener('click', () => Modal.close('modalView'));
+
+    this.fillFilters();
+  },
+
+  fillFilters() {
+    const sDep = $('#fDeputy'), sCon = $('#fContractor');
+    const keepDep = this.state.deputy, keepCon = this.state.contractor;
+    sDep.innerHTML = '<option value="">همه معاونت‌ها</option>' +
+      Store.deputies.map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('');
+    const col = new Intl.Collator('fa');
+    const cons = [...Store.contractors].sort((a, b) => col.compare(a.name, b.name));
+    sCon.innerHTML = '<option value="">همه پیمانکاران</option>' +
+      cons.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+    sDep.value = (keepDep && Store.deputies.some(d => d.id === keepDep)) ? keepDep : '';
+    sCon.value = (keepCon && Store.contractors.some(c => c.id === keepCon)) ? keepCon : '';
+    if (sDep.value !== keepDep) this.state.deputy = '';
+    if (sCon.value !== keepCon) this.state.contractor = '';
+  },
+
+  clearFilters() {
+    Object.assign(this.state, { q: '', deputy: '', contractor: '', from: '', to: '', page: 1 });
+    $('#fSearch').value = '';
+    $('#fDeputy').value = '';
+    $('#fContractor').value = '';
+    ['#fFrom', '#fTo'].forEach(s => { const el = $(s); el.dataset.value = ''; el.value = ''; });
+    this.render();
+  },
+
+  sort(key) {
+    if (this.state.sortKey === key) {
+      this.state.sortDir = this.state.sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.state.sortKey = key;
+      this.state.sortDir = 'asc';
+      this.state.page = 1;
+    }
+    $$('#contractsTable thead th[data-sort]').forEach(th => {
+      th.classList.toggle('sort-asc', th.dataset.sort === this.state.sortKey && this.state.sortDir === 'asc');
+      th.classList.toggle('sort-desc', th.dataset.sort === this.state.sortKey && this.state.sortDir === 'desc');
+    });
+    this.render();
+  },
+
+  filtered() {
+    const st = this.state;
+    const q = normText(st.q);
+    const rows = Store.contracts.filter(c => {
+      const cn = conName(c.contractorId), dn = depName(c.deputyId);
+      return (!q || [c.contractNumber, c.title, cn, dn].some(v => normText(v).includes(q))) &&
+        (!st.deputy || c.deputyId === st.deputy) &&
+        (!st.contractor || c.contractorId === st.contractor) &&
+        (!st.from || c.date >= st.from) &&
+        (!st.to || c.date <= st.to);
+    });
+    const dir = st.sortDir === 'asc' ? 1 : -1;
+    const col = new Intl.Collator('fa');
+    const val = c => ({
+      number: normText(c.contractNumber), date: c.date, title: normText(c.title),
+      contractor: normText(conName(c.contractorId)), deputy: normText(depName(c.deputyId)),
+      duration: +c.durationValue || 0,
+      createdAt: c.createdAt
+    }[st.sortKey]);
+    rows.sort((a, b) => {
+      const va = val(a), vb = val(b);
+      const r = (typeof va === 'number') ? va - vb : col.compare(va, vb);
+      return r * dir;
+    });
+    return rows;
+  },
+
+  render() {
+    const rows = this.filtered();
+    const total = rows.length;
+    const ps = this.state.pageSize;
+    const totalPages = Math.max(1, Math.ceil(total / ps));
+    if (this.state.page > totalPages) this.state.page = totalPages;
+    const start = (this.state.page - 1) * ps;
+    const pageRows = rows.slice(start, start + ps);
+    const tb = $('#contractsBody');
+
+    if (!total) {
+      const hasFilter = this.state.q || this.state.deputy || this.state.contractor || this.state.from || this.state.to;
+      tb.innerHTML = `<tr><td colspan="7"><div class="empty-box">
+        ${svgI('inbox', 30)}
+        <span>${hasFilter ? 'نتیجه‌ای برای جستجو و فیلترهای فعلی یافت نشد.' : 'هنوز قراردادی ثبت نشده است.'}</span>
+        ${hasFilter
+          ? '<button type="button" class="btn btn-ghost btn-sm" id="emptyClearBtn">حذف فیلترها</button>'
+          : '<a class="btn btn-primary btn-sm" href="#define">ثبت قرارداد جدید</a>'}
+      </div></td></tr>`;
+      const ec = $('#emptyClearBtn');
+      if (ec) ec.addEventListener('click', () => this.clearFilters());
+    } else {
+      tb.innerHTML = pageRows.map(c => `
+        <tr>
+          <td><span class="c-num ltr">${esc(c.contractNumber)}</span></td>
+          <td class="c-date">${faNum(c.date)}</td>
+          <td><div class="cell-title" title="${esc(c.title)}">${esc(c.title)}</div></td>
+          <td>${esc(conName(c.contractorId))}</td>
+          <td><span class="chip" title="${esc(depName(c.deputyId))}">${esc(depName(c.deputyId))}</span></td>
+          <td class="c-dur">${faNum(c.durationValue)} ${esc(c.durationUnit || 'ماه')}</td>
+          <td>
+            <div class="row-actions">
+              <button type="button" class="icon-btn sm" data-act="view" data-id="${c.id}" aria-label="مشاهده جزئیات" title="مشاهده جزئیات">${svgI('eye', 15)}</button>
+              <button type="button" class="icon-btn sm danger" data-act="delete" data-id="${c.id}" aria-label="حذف قرارداد" title="حذف">${svgI('trash', 15)}</button>
+            </div>
+          </td>
+        </tr>`).join('');
+    }
+
+    $('#resultCount').textContent = total
+      ? `نمایش ${faNum(start + 1)} تا ${faNum(Math.min(start + ps, total))} از ${faNum(total)} نتیجه`
+      : 'نتیجه‌ای یافت نشد';
+    this.renderPager(totalPages);
+  },
+
+  renderPager(totalPages) {
+    const el = $('#pager');
+    const cur = this.state.page;
+    let html = `<button type="button" class="page-btn" data-page="${cur - 1}" ${cur === 1 ? 'disabled' : ''}>قبلی</button>`;
+    pageList(totalPages, cur).forEach(p => {
+      html += (p === '…')
+        ? '<span class="page-dots">…</span>'
+        : `<button type="button" class="page-btn${p === cur ? ' active' : ''}" data-page="${p}">${faNum(p)}</button>`;
+    });
+    html += `<button type="button" class="page-btn" data-page="${cur + 1}" ${cur === totalPages ? 'disabled' : ''}>بعدی</button>`;
+    el.innerHTML = html;
+  },
+
+  view(id) {
+    const c = Store.contracts.find(x => x.id === id);
+    if (!c) return;
+    $('#viewBody').innerHTML = `
+      <div class="view-row"><span class="view-label">شماره قرارداد</span><span class="c-num ltr">${esc(c.contractNumber)}</span></div>
+      <div class="view-row"><span class="view-label">تاریخ قرارداد</span><span>${faNum(c.date)}</span></div>
+      <div class="view-row"><span class="view-label">عنوان قرارداد</span><span class="view-title">${esc(c.title)}</span></div>
+      <div class="view-row"><span class="view-label">پیمانکار</span><span>${esc(conName(c.contractorId))}</span></div>
+      <div class="view-row"><span class="view-label">معاونت</span><span class="chip">${esc(depName(c.deputyId))}</span></div>
+      <div class="view-row"><span class="view-label">مدت قرارداد</span><span>${faNum(c.durationValue)} ${esc(c.durationUnit || 'ماه')}</span></div>
+      <div class="view-row"><span class="view-label">تاریخ ثبت در سامانه</span><span>${stamp(c.createdAt)}</span></div>`;
+    Modal.open('modalView');
+  },
+
+  askDelete(id) {
+    const c = Store.contracts.find(x => x.id === id);
+    if (!c) return;
+    this._pendingDelete = id;
+    $('#delNumber').textContent = c.contractNumber;
+    Modal.open('modalDelete');
+  },
+
+  async confirmDelete() {
+    const id = this._pendingDelete;
+    if (!id) return;
+    const idx = Store.contracts.findIndex(x => x.id === id);
+    if (idx > -1) {
+      const removed = Store.contracts[idx];
+      try { await Store.removeContract(id); }
+      catch (e) { Toast.show('حذف قرارداد ناموفق بود.', 'error'); this._pendingDelete = null; Modal.close('modalDelete'); return; }
+      Notifs.add(`قرارداد «${removed.contractNumber}» حذف شد.`, 'delete');
+      Toast.show('قرارداد موردنظر حذف شد.');
+      refreshData();
+    }
+    this._pendingDelete = null;
+    Modal.close('modalDelete');
+  }
+};
+
+/* ════════════════════════════════════════════════════════════
+   ماژول ۱۳: گزارشات
+   ════════════════════════════════════════════════════════════ */
+function reportStat(icon, colorCls, label, value, sub) {
+  return `
+    <div class="stat-card sm">
+      <div class="stat-icon ${colorCls}">${svgI(icon, 22)}</div>
+      <div class="stat-txt">
+        <span class="stat-value sm">${value}</span>
+        <span class="stat-label">${label}</span>
+        ${sub ? `<span class="stat-sub">${sub}</span>` : ''}
+      </div>
+    </div>`;
+}
+
+function hbarRow(name, n, max, color) {
+  return `
+    <div class="hbar-row">
+      <div class="hbar-top">
+        <span class="hbar-name" title="${esc(name)}">${esc(name)}</span>
+        <span class="hbar-val">${faNum(n)} قرارداد</span>
+      </div>
+      <div class="hbar"><span style="width:${(n / max * 100).toFixed(1)}%;background:${color}"></span></div>
+    </div>`;
+}
+
+const Reports = {
+  render() {
+    const cs = Store.contracts;
+    const col = new Intl.Collator('fa');
+
+    /* تعداد قراردادهای هر پیمانکار (از دفتر پیمانکاران — نزولی) */
+    const conArr = Store.contractors
+      .map(c => [c.name, cs.filter(x => x.contractorId === c.id).length])
+      .sort((a, b) => b[1] - a[1] || col.compare(a[0], b[0]));
+
+    /* تعداد قراردادها بر اساس معاونت */
+    const depArr = [...Dashboard.byDeputy(cs).entries()].sort((a, b) => b[1] - a[1]);
+
+    /* خلاصه آماری */
+    const jNow = Jalali.today();
+    const inYear = cs.filter(c => c.date.startsWith(String(jNow.jy) + '/')).length;
+    const topDep = (depArr.length && depArr[0][1] > 0) ? depArr[0] : null;
+    const topCon = (conArr.length && conArr[0][1] > 0) ? conArr[0] : null;
+
+    $('#reportSummary').innerHTML =
+      reportStat('fileText', 'i-blue', 'کل قراردادهای ثبت‌شده', faNum(cs.length)) +
+      reportStat('grid', 'i-teal', 'معاونت‌های همکار', faNum(new Set(cs.map(c => c.deputyId)).size)) +
+      reportStat('users', 'i-purple', 'پیمانکاران دارای قرارداد', faNum(conArr.filter(x => x[1] > 0).length)) +
+      reportStat('calendar', 'i-amber', `قراردادهای سال ${faNum(jNow.jy)}`, faNum(inYear)) +
+      reportStat('layers', 'i-teal', 'پرقراردادترین معاونت', topDep ? esc(topDep[0]) : '—', topDep ? faNum(topDep[1]) + ' قرارداد' : '') +
+      reportStat('briefcase', 'i-purple', 'پرقراردادترین پیمانکار', topCon ? esc(topCon[0]) : '—', topCon ? faNum(topCon[1]) + ' قرارداد' : '');
+
+    /* نمودارهای میله‌ای افقی */
+    if (!cs.length) {
+      $('#repDeputy').innerHTML = emptyBox('داده‌ای برای نمایش وجود ندارد.');
+      $('#repContractor').innerHTML = emptyBox('داده‌ای برای نمایش وجود ندارد.');
+      return;
+    }
+    const depMax = Math.max(...depArr.map(x => x[1]), 1);
+    $('#repDeputy').innerHTML = depArr.map(([d, n], i) => hbarRow(d, n, depMax, PALETTE[i % PALETTE.length])).join('');
+    const conMax = Math.max(...conArr.map(x => x[1]), 1);
+    $('#repContractor').innerHTML = conArr.map(([c, n], i) => hbarRow(c, n, conMax, PALETTE2[i % PALETTE2.length])).join('');
+  }
+};
+const PALETTE2 = ['#0f9b8e', '#2a62bd', '#7c5cbf', '#d9860f', '#0f7fae', '#c05a9e', '#5f7d2a', '#c0563f'];
+
+/* ════════════════════════════════════════════════════════════
+   ماژول ۱۴: مدیریت پیمانکاران (ثبت، ویرایش، حذف، جستجو)
+   ════════════════════════════════════════════════════════════ */
+const Contractors = {
+  q: '',
+  editing: null,
+  init() {
+    $('#ctSearch').addEventListener('input', e => { this.q = e.target.value; this.render(); });
+    $('#contractorForm').addEventListener('submit', e => { e.preventDefault(); this.submit(); });
+    $('#ctReset').addEventListener('click', () => this.resetForm());
+    $('#ctBody').addEventListener('click', e => {
+      const btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+      if (btn.dataset.act === 'edit') this.startEdit(btn.dataset.id);
+      else this.askDelete(btn.dataset.id);
+    });
+  },
+  countFor(id) { return Store.contracts.filter(c => c.contractorId === id).length; },
+  setErr(sel, msg) {
+    const el = $(sel);
+    el.textContent = msg;
+    const f = el.closest('.field');
+    if (f) f.classList.add('has-error');
+  },
+  clrErr(sel) {
+    const el = $(sel);
+    el.textContent = '';
+    const f = el.closest('.field');
+    if (f) f.classList.remove('has-error');
+  },
+  clrAll() { ['#eCtName', '#eCtType', '#eCtMobile'].forEach(s => this.clrErr(s)); },
+  async submit() {
+    const name = $('#ctName').value.trim().replace(/\s+/g, ' ');
+    const type = $('#ctType').value;
+    const grade = $('#ctGrade').value;
+    const mobile = normDigits($('#ctMobile').value.trim()).replace(/[\s\-()]/g, '');
+    const address = $('#ctAddress').value.trim();
+    this.clrAll();
+    let ok = true;
+    const fail = (errSel, msg) => { this.setErr(errSel, msg); ok = false; };
+    if (!name) fail('#eCtName', 'نام پیمانکار را وارد کنید.');
+    else if (Store.contractors.some(c => c.id !== this.editing && normText(c.name) === normText(name)))
+      fail('#eCtName', 'پیمانکاری با این نام قبلاً ثبت شده است.');
+    if (!type) fail('#eCtType', 'نوع شخصیت را انتخاب کنید.');
+    if (mobile && !/^09\d{9}$/.test(mobile)) fail('#eCtMobile', 'شماره موبایل معتبر وارد کنید (مثال: 09123456789).');
+    if (!ok) { Toast.show('لطفاً خطاهای مشخص‌شده در فرم را برطرف کنید.', 'error'); return; }
+    if (this.editing) {
+      const c = Store.contractors.find(x => x.id === this.editing);
+      if (c) {
+        Object.assign(c, { name: name, type: type, grade: grade, mobile: mobile, address: address });
+        try { await Store.saveContractor(c); }
+        catch (e) { Toast.show('ذخیره اطلاعات پیمانکار ناموفق بود.', 'error'); return; }
+        Toast.show('اطلاعات پیمانکار به‌روزرسانی شد.');
+        Notifs.add(`اطلاعات پیمانکار «${name}» ویرایش شد.`, 'settings');
+      }
+    } else {
+      const rec = { id: uid(), name: name, type: type, grade: grade, mobile: mobile, address: address, createdAt: Date.now() };
+      try { await Store.saveContractor(rec); }
+      catch (e) { Toast.show('ثبت پیمانکار در پایگاه داده ناموفق بود.', 'error'); return; }
+      Toast.show('پیمانکار جدید با موفقیت ثبت شد.');
+      Notifs.add(`پیمانکار «${name}» به سامانه افزوده شد.`, 'deputy');
+    }
+    this.resetForm();
+    this.render();
+    Form.fillContractorSelect($('#cContractor').value);
+    List.fillFilters();
+    refreshData();
+  },
+  startEdit(id) {
+    const c = Store.contractors.find(x => x.id === id);
+    if (!c) return;
+    this.editing = id;
+    $('#ctName').value = c.name;
+    $('#ctType').value = c.type || '';
+    $('#ctGrade').value = c.grade || '';
+    $('#ctMobile').value = c.mobile || '';
+    $('#ctAddress').value = c.address || '';
+    $('#ctFormTitle').textContent = 'ویرایش پیمانکار';
+    $('#ctSubmit').textContent = 'ذخیره تغییرات';
+    this.clrAll();
+    $('#ctName').focus();
+  },
+  resetForm() {
+    this.editing = null;
+    $('#contractorForm').reset();
+    this.clrAll();
+    $('#ctFormTitle').textContent = 'ثبت پیمانکار جدید';
+    $('#ctSubmit').textContent = 'ثبت پیمانکار';
+  },
+  async askDelete(id) {
+    const c = Store.contractors.find(x => x.id === id);
+    if (!c) return;
+    const used = this.countFor(id);
+    if (used) {
+      Toast.show(`این پیمانکار در ${faNum(used)} قرارداد استفاده شده و قابل حذف نیست.`, 'error');
+      return;
+    }
+    const ok = await Confirm.ask('حذف پیمانکار', `آیا از حذف «${c.name}» مطمئن هستید؟ این عملیات قابل بازگشت نیست.`, 'حذف پیمانکار');
+    if (!ok) return;
+    try { await Store.removeContractor(id); }
+    catch (e) { Toast.show('حذف پیمانکار ناموفق بود.', 'error'); return; }
+    if (this.editing === id) this.resetForm();
+    Toast.show('پیمانکار موردنظر حذف شد.');
+    Notifs.add(`پیمانکار «${c.name}» حذف شد.`, 'delete');
+    this.render();
+    Form.fillContractorSelect($('#cContractor').value);
+    List.fillFilters();
+    refreshData();
+  },
+  render() {
+    const q = normText(this.q);
+    let rows = [...Store.contractors];
+    if (q) rows = rows.filter(c => [c.name, c.mobile, c.grade, c.type].some(v => normText(v).includes(q)));
+    rows.sort((a, b) => new Intl.Collator('fa').compare(a.name, b.name));
+    const tb = $('#ctBody');
+    if (!rows.length) {
+      tb.innerHTML = `<tr><td colspan="7"><div class="empty-box">${svgI('inbox', 30)}<span>${Store.contractors.length ? 'نتیجه‌ای برای جستجوی فعلی یافت نشد.' : 'هنوز پیمانکاری ثبت نشده است؛ از فرم روبه‌رو ثبت کنید.'}</span></div></td></tr>`;
+    } else {
+      tb.innerHTML = rows.map(c => `
+        <tr>
+          <td><b>${esc(c.name)}</b></td>
+          <td><span class="chip${c.type === 'حقوقی' ? ' teal' : ''}">${esc(c.type || '—')}</span></td>
+          <td>${c.grade ? faNum(c.grade) : '—'}</td>
+          <td class="c-date">${c.mobile ? faNum(c.mobile) : '—'}</td>
+          <td><div class="cell-title" title="${esc(c.address || '')}">${c.address ? esc(c.address) : '—'}</div></td>
+          <td>${faNum(this.countFor(c.id))}</td>
+          <td>
+            <div class="row-actions">
+              <button type="button" class="icon-btn sm" data-act="edit" data-id="${c.id}" aria-label="ویرایش" title="ویرایش">${svgI('edit', 15)}</button>
+              <button type="button" class="icon-btn sm danger" data-act="delete" data-id="${c.id}" aria-label="حذف" title="حذف">${svgI('trash', 15)}</button>
+            </div>
+          </td>
+        </tr>`).join('');
+    }
+    $('#ctCount').textContent = `مجموع: ${faNum(rows.length)} پیمانکار`;
+  }
+};
+
+/* ════════════════════════════════════════════════════════════
+   ماژول ۱۵: پشتیبان گیری و بازیابی اطلاعات (JSON)
+   ════════════════════════════════════════════════════════════ */
+const Backup = {
+  pending: null,
+  init() {
+    $('#createBackupBtn').addEventListener('click', () => this.create());
+    const dz = $('#dropzone'), fi = $('#restoreInput');
+    dz.addEventListener('click', () => fi.click());
+    dz.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fi.click(); }
+    });
+    ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag'); }));
+    ['dragleave', 'dragend'].forEach(ev => dz.addEventListener(ev, () => dz.classList.remove('drag')));
+    dz.addEventListener('drop', e => {
+      e.preventDefault();
+      dz.classList.remove('drag');
+      const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) this.handleFile(f);
+    });
+    fi.addEventListener('change', () => {
+      const f = fi.files && fi.files[0];
+      if (f) this.handleFile(f);
+      fi.value = '';
+    });
+    $('#bkBody').addEventListener('click', e => {
+      const btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+      this.askDelete(btn.dataset.id);
+    });
+  },
+  payload() {
+    const j = Jalali.today();
+    return {
+      app: 'ContractManagementDB',
+      version: 3,
+      createdAt: new Date().toISOString(),
+      createdAtJalali: `${j.jy}/${pad2(j.jm)}/${pad2(j.jd)}`,
+      data: {
+        contracts: Store.contracts,
+        contractors: Store.contractors,
+        deputies: Store.deputies,
+        settings: {
+          companyName: Store.settings.companyName,
+          theme: Store.settings.theme,
+          logo: Store.settings.logo,
+          generalSettings: Store.settings.generalSettings
+        }
+      }
+    };
+  },
+  async create() {
+    const p = this.payload();
+    const j = Jalali.today();
+    const fileName = `contract-backup-${j.jy}-${pad2(j.jm)}-${pad2(j.jd)}.json`;
+    const json = JSON.stringify(p, null, 2);
+    const meta = { id: uid(), fileName: fileName, date: new Date().toISOString(), size: new Blob([json]).size };
+    try { await Store.addBackupMeta(meta); }
+    catch (e) { Toast.show('ثبت سابقه پشتیبان در پایگاه داده ناموفق بود.', 'error'); this.render(); return; }
+    this.downloadFile(p, fileName);
+    Toast.show('نسخه پشتیبان تهیه و فایل آن دانلود شد.');
+    Notifs.add(`نسخه پشتیبان «${fileName}» ایجاد شد.`, 'backup');
+    this.render();
+  },
+  downloadFile(obj, name) {
+    const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 400);
+  },
+  async askDelete(id) {
+    const ok = await Confirm.ask('حذف سابقه پشتیبان', 'این سابقه از فهرست نسخه‌های پشتیبان حذف شود؟ (فایل‌های دانلودشده قبلی حذف نمی‌شوند)', 'حذف');
+    if (!ok) return;
+    try { await Store.removeBackupMeta(id); }
+    catch (e) { Toast.show('حذف سابقه پشتیبان ناموفق بود.', 'error'); return; }
+    this.render();
+    Toast.show('سابقه پشتیبان حذف شد.');
+  },
+  formatSize(bytes) {
+    if (bytes < 1024) return faNum(bytes) + ' بایت';
+    const kb = bytes / 1024;
+    if (kb < 1024) return faNum(String(Math.round(kb * 10) / 10).replace('.', '٫')) + ' کیلوبایت';
+    return faNum(String(Math.round(kb / 1024 * 10) / 10).replace('.', '٫')) + ' مگابایت';
+  },
+  render() {
+    $('#bkCountContracts').textContent = faNum(Store.contracts.length);
+    $('#bkCountContractors').textContent = faNum(Store.contractors.length);
+    $('#bkCountDeputies').textContent = faNum(Store.deputies.length);
+    const tb = $('#bkBody');
+    const rows = [...Store.backups].sort((a, b) => new Date(b.date) - new Date(a.date));
+    if (!rows.length) {
+      tb.innerHTML = `<tr><td colspan="4"><div class="empty-box">${svgI('inbox', 30)}<span>هنوز نسخه پشتیبانی تهیه نشده است.</span></div></td></tr>`;
+      return;
+    }
+    tb.innerHTML = rows.map(b => {
+      const ts = Date.parse(b.date);
+      return `
+      <tr>
+        <td class="c-date">${stamp(isNaN(ts) ? Date.now() : ts)}</td>
+        <td class="c-date">${this.formatSize(b.size)}</td>
+        <td><span class="c-num ltr">${esc(b.fileName)}</span></td>
+        <td>
+          <div class="row-actions">
+            <button type="button" class="icon-btn sm danger" data-act="del" data-id="${esc(b.id)}" aria-label="حذف" title="حذف">${svgI('trash', 15)}</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  },
+  /* ── بازیابی ── */
+  handleFile(file) {
+    this.hidePreview();
+    const isJson = /\.json$/i.test(file.name) || file.type === 'application/json';
+    if (!isJson) { this.showError('فایل انتخاب‌شده معتبر نیست؛ فقط فایل JSON پشتیبانی می‌شود.'); return; }
+    if (file.size > 8 * 1024 * 1024) { this.showError('حجم فایل بیش از حد مجاز است (حداکثر ۸ مگابایت).'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      let obj = null;
+      try { obj = JSON.parse(reader.result); } catch (e) { obj = null; }
+      if (obj && typeof obj === 'object' && obj.app && obj.app !== 'ContractManagementDB') {
+        this.showError('این فایل متعلق به سامانه مدیریت قراردادهای پیمانکاری نیست.');
+        return;
+      }
+      const d = obj && typeof obj === 'object' ? (obj.data || obj) : null;
+      if (!d || !Array.isArray(d.contracts) || !Array.isArray(d.contractors) || !Array.isArray(d.deputies)) {
+        this.showError('ساختار فایل معتبر نیست؛ کلیدهای «contracts»، «contractors» و «deputies» یافت نشد.');
+        return;
+      }
+      const badRows = d.contracts.some(c => !c || typeof c !== 'object' || !c.contractNumber) ||
+                      d.contractors.some(c => !c || typeof c !== 'object' || !c.name);
+      if (badRows) { this.showError('رکوردهای داخل فایل ناقص است و قابل بازیابی نیست.'); return; }
+      const settings = (d.settings && typeof d.settings === 'object' && !Array.isArray(d.settings)) ? d.settings : {};
+      this.pending = { contracts: d.contracts, contractors: d.contractors, deputies: d.deputies, settings: settings, fileName: file.name };
+      const pv = $('#restorePreview');
+      pv.hidden = false;
+      pv.innerHTML = `
+        <div class="rp-head">${svgI('ok', 18)} <span>فایل پشتیبان معتبر است: ${esc(file.name)}</span></div>
+        <div class="rp-stats">
+          <div><b>${faNum(d.contracts.length)}</b><span>قرارداد</span></div>
+          <div><b>${faNum(d.contractors.length)}</b><span>پیمانکار</span></div>
+          <div><b>${faNum(d.deputies.length)}</b><span>معاونت</span></div>
+        </div>
+        <div class="rp-warn">${svgI('warn', 18)} <span>با تأیید بازیابی، تمام اطلاعات فعلی (قراردادها، پیمانکاران، معاونت‌ها و تنظیمات) با اطلاعات این فایل جایگزین می‌شود.</span></div>
+        <div class="rp-actions">
+          <button type="button" id="rpConfirm" class="btn btn-primary">تأیید و بازیابی</button>
+          <button type="button" id="rpCancel" class="btn btn-ghost">انصراف</button>
+        </div>`;
+      $('#rpConfirm').addEventListener('click', () => this.doRestore());
+      $('#rpCancel').addEventListener('click', () => this.hidePreview());
+      Toast.show('فایل با موفقیت اعتبارسنجی شد.', 'info');
+    };
+    reader.onerror = () => this.showError('خواندن فایل ناموفق بود.');
+    reader.readAsText(file);
+  },
+  hidePreview() {
+    const pv = $('#restorePreview');
+    pv.hidden = true;
+    pv.innerHTML = '';
+    this.pending = null;
+  },
+  showError(msg) {
+    const pv = $('#restorePreview');
+    pv.hidden = false;
+    pv.innerHTML = `<div class="rp-error">${svgI('warn', 18)} <span>${esc(msg)}</span></div>`;
+  },
+  async doRestore() {
+    if (!this.pending) return;
+    const p = this.pending;
+    this.pending = null;
+    /* نرمال‌سازی رکوردها مطابق دیتامدل IndexedDB */
+    const now = Date.now();
+    const contracts = p.contracts.map(c => ({
+      id: c.id || uid(), contractNumber: c.contractNumber || '', date: c.date || '',
+      title: c.title || '', contractorId: c.contractorId || '', deputyId: c.deputyId || '',
+      durationValue: +c.durationValue || +c.duration || 0,
+      durationUnit: c.durationUnit || 'ماه',
+      createdAt: c.createdAt || now
+    }));
+    const contractors = p.contractors.map(c => ({
+      id: c.id || uid(), name: c.name || '', type: c.type || '', grade: c.grade || '',
+      mobile: c.mobile || '', address: c.address || '', createdAt: c.createdAt || now
+    }));
+    const deputies = p.deputies.map(d => ({ id: d.id || uid(), name: d.name || '', createdAt: d.createdAt || now }));
+    Store.settings = Object.assign(
+      {}, JSON.parse(JSON.stringify(DEFAULT_SETTINGS)), (p.settings && typeof p.settings === 'object') ? p.settings : {}, { id: 'app' }
+    );
+    Store.settings.generalSettings = Object.assign(
+      {}, DEFAULT_SETTINGS.generalSettings, (p.settings && p.settings.generalSettings) || {}
+    );
+    try { await Store.replaceAll({ contracts: contracts, contractors: contractors, deputies: deputies }); }
+    catch (e) { Toast.show('بازیابی اطلاعات در پایگاه داده ناموفق بود.', 'error'); return; }
+    Theme.apply();
+    SettingsPage.render();
+    Form.fillDeputySelect('');
+    Form.fillContractorSelect('');
+    List.state.pageSize = Store.settings.generalSettings.pageSize || 10;
+    List.fillFilters();
+    refreshData();
+    this.render();
+    this.hidePreview();
+    Toast.show('بازیابی اطلاعات با موفقیت انجام شد.');
+    Notifs.add('اطلاعات سامانه از فایل پشتیبان بازیابی شد.', 'restore');
+  }
+};
+
+/* ════════════════════════════════════════════════════════════
+   ماژول ۱۶: تنظیمات (اطلاعات شرکت، ظاهر، عمومی)
+   ════════════════════════════════════════════════════════════ */
+const SettingsPage = {
+  init() {
+    /* ذخیره فوری نام شرکت پس از خروج از فیلد (بدون نیاز به دکمه) */
+    $('#setName').addEventListener('change', () => this.saveCompany(true));
+    $('#saveCompanyBtn').addEventListener('click', () => this.saveCompany());
+    $('#logoBtn').addEventListener('click', () => $('#logoInput').click());
+    $('#logoInput').addEventListener('change', e => {
+      const f = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (f) this.processLogo(f);
+    });
+    $('#logoRemoveBtn').addEventListener('click', async () => {
+      Store.settings.logo = '';
+      try { await Store.saveSettings(); } catch (e) { /* ignore */ }
+      this.renderLogo();
+      Theme.apply();
+      Toast.show('لوگو حذف شد.');
+    });
+    $$('.theme-card').forEach(btn => btn.addEventListener('click', () => {
+      Theme.set(btn.dataset.themeChoice);
+      this.renderTheme();
+      Toast.show(`پوسته ${btn.dataset.themeChoice === 'dark' ? 'تاریک' : 'روشن'} اعمال شد.`);
+    }));
+    $('#setPageSize').addEventListener('change', async e => {
+      const v = +e.target.value;
+      Store.settings.generalSettings.pageSize = [5, 10, 25, 50].indexOf(v) > -1 ? v : 10;
+      try { await Store.saveSettings(); } catch (err) { /* ignore */ }
+      List.state.pageSize = Store.settings.generalSettings.pageSize;
+      List.state.page = 1;
+      List.render();
+      Toast.show('تنظیمات ذخیره شد.');
+    });
+    $('#setNotif').addEventListener('change', async e => {
+      Store.settings.generalSettings.notificationsEnabled = !!e.target.checked;
+      try { await Store.saveSettings(); } catch (err) { /* ignore */ }
+      Notifs.render();
+      Toast.show(e.target.checked ? 'اعلان‌ها فعال شد.' : 'اعلان‌ها غیرفعال شد.');
+    });
+  },
+  async saveCompany(auto) {
+    const name = $('#setName').value.trim();
+    Store.settings.companyName = name;
+    try { await Store.saveSettings(); }
+    catch (e) { Toast.show('ذخیره تنظیمات ناموفق بود.', 'error'); return; }
+    Theme.apply();
+    Toast.show(auto ? 'نام شرکت به‌صورت خودکار ذخیره شد.' : 'اطلاعات شرکت ذخیره شد.');
+    Notifs.add('اطلاعات شرکت به‌روزرسانی شد.', 'settings');
+  },
+  processLogo(file) {
+    if (!/^image\//.test(file.type)) { Toast.show('فقط فایل تصویری انتخاب کنید.', 'error'); return; }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = async () => {
+      try {
+        const MAX = 160;
+        const sc = Math.min(1, MAX / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * sc)), h = Math.max(1, Math.round(img.height * sc));
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        Store.settings.logo = cv.toDataURL('image/png');
+        try { await Store.saveSettings(); } catch (e) { /* ignore */ }
+        this.renderLogo();
+        Theme.apply();
+        Toast.show('لوگو به‌روزرسانی شد.');
+      } catch (e) { Toast.show('پردازش تصویر ناموفق بود.', 'error'); }
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => { Toast.show('فایل تصویر معتبر نیست.', 'error'); URL.revokeObjectURL(url); };
+    img.src = url;
+  },
+  renderLogo() {
+    const box = $('#logoPreview');
+    box.innerHTML = Store.settings.logo ? `<img src="${Store.settings.logo}" alt="لوگوی شرکت">` : svgI('briefcase', 26);
+    $('#logoRemoveBtn').hidden = !Store.settings.logo;
+  },
+  renderTheme() {
+    $$('.theme-card').forEach(b => b.classList.toggle('active', b.dataset.themeChoice === Store.settings.theme));
+  },
+  render() {
+    $('#setName').value = Store.settings.companyName || '';
+    $('#setPageSize').value = String(Store.settings.generalSettings.pageSize || 10);
+    $('#setNotif').checked = !!Store.settings.generalSettings.notificationsEnabled;
+    this.renderLogo();
+    this.renderTheme();
+  }
+};
+
+/* ════════════════════════════════════════════════════════════
+   ماژول ۱۷: مسیریابی بین صفحات (Hash Router)
+   ════════════════════════════════════════════════════════════ */
+const Router = {
+  pages: ['dashboard', 'define', 'list', 'reports', 'contractors', 'backup', 'settings'],
+  titles: {
+    dashboard: 'داشبورد', define: 'تعریف قرارداد', list: 'لیست قراردادها', reports: 'گزارشات',
+    contractors: 'مدیریت پیمانکاران', backup: 'پشتیبان گیری و بازیابی', settings: 'تنظیمات'
+  },
+
+  go(name, fromHash) {
+    if (this.pages.indexOf(name) === -1) name = 'dashboard';
+    $$('.page').forEach(p => p.classList.remove('active'));
+    const target = $('#page-' + name);
+    if (target) target.classList.add('active');
+    $$('.side-link').forEach(a => a.classList.toggle('active', a.dataset.page === name));
+    if (!fromHash && location.hash !== '#' + name) {
+      try { location.hash = name; } catch (e) { /*ignore*/ }
+    }
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    if (window.innerWidth <= 992 && typeof window._closeDrawer === 'function') window._closeDrawer();
+    if (name === 'dashboard') Dashboard.render();
+    if (name === 'reports') Reports.render();
+    if (name === 'contractors') Contractors.render();
+    if (name === 'backup') Backup.render();
+    if (name === 'settings') SettingsPage.render();
+    document.title = this.titles[name] + ' | ' + (Store.settings.companyName || 'سامانه مدیریت قراردادهای پیمانکاری');
+  },
+  init() {
+    window.addEventListener('hashchange', () => this.go(location.hash.replace('#', ''), true));
+    this.go(location.hash.replace('#', '') || 'dashboard', false);
+  }
+};
+
+/* کلیک روی همه لینک‌های داخلی برنامه (#dashboard و ...) */
+document.addEventListener('click', e => {
+  const a = e.target.closest('a[href^="#"]');
+  if (!a) return;
+  const h = (a.getAttribute('href') || '').slice(1);
+  if (Router.pages.indexOf(h) === -1) return;
+  e.preventDefault();
+  Router.go(h, false);
+});
+
+/* ════════════════════════════════════════════════════════════
+   ماژول ۱۵: به‌روزرسانی همه نماها پس از تغییر داده
+   ════════════════════════════════════════════════════════════ */
+function refreshData() {
+  Dashboard.render();
+  List.fillFilters();
+  List.render();
+  Reports.render();
+  Contractors.render();
+}
+
+/* ════════════════════════════════════════════════════════════
+   راه‌اندازی برنامه — IndexedDB (بدون Seed، پایگاه داده خالی)
+   ════════════════════════════════════════════════════════════ */
+/* گزارش خطاهای ذخیره‌سازی پیش‌بینی‌نشده */
+window.addEventListener('unhandledrejection', ev => {
+  if (ev && ev.reason) console.error(ev.reason);
+  Toast.show('عملیات پایگاه داده ناموفق بود؛ دوباره تلاش کنید.', 'error');
+});
+
+(async function initApp() {
+  await Store.init();
+  /* درخواست ذخیره‌سازی پایدار (Best-effort، بدون پیام به کاربر) */
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* ignore */ }
+  Theme.apply();
+  Notifs.load();
+  Notifs.render();
+  Form.init();
+  List.init();
+  Contractors.init();
+  Backup.init();
+  SettingsPage.init();
+  Dashboard.render();
+  Reports.render();
+  Contractors.render();
+  Backup.render();
+  SettingsPage.render();
+  bindDatePickers();
+  UI.init();
+  Router.init();
+})();
+</script>
+</body>
+</html>
